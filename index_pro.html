@@ -2160,13 +2160,14 @@ function renderResult() {
       ${STEPS.map(st => `<div class="tab-btn ${STATE.resultTab === st.key ? 'active' : ''}" onclick="STATE.resultTab='${st.key}'; render();">${st.label}</div>`).join('')}
     </div>
 
-    <div style="flex:1; overflow-y:auto; padding-bottom:20px;">
+    <div style="flex:1; overflow-y:auto;">
       ${tabContent[STATE.resultTab] || tabContent.summary}
+      <div style="padding:8px 0 24px;">
+        <button class="btn-primary" onclick="alert('퍼슨 전문 코디네이터 상담 예약 화면으로 이동합니다.');">전문 상담 예약하기</button>
+        <button class="btn-secondary" onclick="STATE.screen='admin'; render();">⚙️ 관리자 워크시트 조회</button>
+        <button class="back-btn" onclick="resetToSelect()">🏠 처음 화면으로 (다른 진단 해보기)</button>
+      </div>
     </div>
-
-    <button class="btn-primary" onclick="alert('퍼슨 전문 코디네이터 상담 예약 화면으로 이동합니다.');">전문 상담 예약하기</button>
-    <button class="btn-secondary" onclick="STATE.screen='admin'; render();">⚙️ 관리자 워크시트 조회</button>
-    <button class="back-btn" onclick="resetToSelect()">🏠 처음 화면으로 (다른 진단 해보기)</button>
   `;
   return div;
 }
