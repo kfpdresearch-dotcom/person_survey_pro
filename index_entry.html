@@ -129,6 +129,17 @@ body { background-color: #EFEFEF; display: flex; justify-content: center; align-
 .admin-table th { padding: 14px; background: var(--bg-color); position: sticky; top: 0; color: var(--text-sub); border-bottom: 1px solid var(--border-light); white-space: nowrap; }
 .admin-table td { padding: 14px; border-bottom: 1px solid var(--border-light); color: var(--text-main); }
 
+/* ===== 시연용 사례 카드 ===== */
+.persona-list { display: flex; flex-direction: column; gap: 10px; }
+.persona-card { display: flex; align-items: center; gap: 12px; background: #fff; border: 1.5px solid var(--border-light); border-radius: 14px; padding: 14px 13px; cursor: pointer; transition: transform .15s ease, border-color .15s ease; }
+.persona-card:active { transform: scale(0.985); border-color: var(--primary); }
+.persona-emoji { font-size: 28px; flex-shrink: 0; }
+.persona-body { flex: 1; }
+.persona-name { font-size: 16.5px; font-weight: 800; color: var(--text-main); margin-bottom: 3px; }
+.persona-tag { font-size: 13.5px; font-weight: 700; color: var(--primary-dark); margin-bottom: 4px; }
+.persona-desc { font-size: 13.5px; color: var(--text-sub); line-height: 1.5; }
+.persona-arrow { font-size: 17px; font-weight: 800; color: var(--primary); flex-shrink: 0; }
+
 /* ===== 면책 · 안내 · 위기 카드 ===== */
 .disclaimer-fixed { margin: 14px 2px 6px; padding: 13px 14px; background: #FBF6F5; border: 1px solid #E8D5D0; border-radius: 12px; }
 .disclaimer-fixed p { font-size: 13px; line-height: 1.6; color: #7A4A40; margin: 0 0 7px; }
@@ -1046,6 +1057,84 @@ function renderResult() {
 // ============================================================
 // 5. Admin Dashboard & Excel Export
 // ============================================================
+// ============================================================
+// 시연용 사례 3종 — 관리자 모드에서 결과를 바로 확인
+// ============================================================
+const PERSONAS = {
+  p1: {
+    key:'p1', emoji:'🦿', name:'최성길 어르신',
+    tag:'74세 남성 · 부부 가구 · 은퇴',
+    desc:'무릎과 집안 안전이 걱정인, 몸 돌봄이 필요한 사례',
+    lv:{ 'A. 기본정보':1,'B. 신체 건강':1,'C. 일상 기능':0,'D. 인지 건강':0,'E. 정서 상태':0,
+         'F. 사회 관계':0,'G. 경제 재무':1,'H. 주거 환경':1,'I. 여가 활동':0,'J. 미래 준비':0,'K. 맞춤 서비스':0 },
+    ans:{ 1:'남성', 2:'1952', 3:'부부 가구', 4:'200만 원~300만 원 미만',
+      7:'그저 그래요', 8:'가끔 기운이 달려요', 9:'한 가지 관리 중',
+      10:'하고 싶은 일을 못 할 만큼 힘들어요', 11:'두 번 이상 있어요',
+      14:'별로 없어요', 16:'아니요, 여전히 즐거워요', 17:'아니요, 괜찮아요',
+      18:'대체로 그런 편이에요', 20:'거의 없어요',
+      23:'조금 불편한 곳이 있어요',
+      29:'무릎이 아파서 계단 오르내리기가 힘들고, 욕실에서 미끄러질까 겁이 나요' }
+  },
+  p2: {
+    key:'p2', emoji:'💬', name:'한금자 어르신',
+    tag:'79세 여성 · 독거 · 3년 전 사별',
+    desc:'몸은 정정하나 외로움이 깊은, 마음 돌봄이 필요한 사례',
+    lv:{ 'A. 기본정보':1,'B. 신체 건강':1,'C. 일상 기능':0,'D. 인지 건강':0,'E. 정서 상태':3,
+         'F. 사회 관계':3,'G. 경제 재무':1,'H. 주거 환경':0,'I. 여가 활동':3,'J. 미래 준비':0,'K. 맞춤 서비스':0 },
+    ans:{ 1:'여성', 2:'1947', 3:'독거 (1인 가구)', 4:'100만 원~200만 원 미만',
+      7:'괜찮은 편이에요', 8:'가끔 기운이 달려요', 9:'한 가지 관리 중',
+      10:'거의 없어요', 11:'없어요',
+      14:'별로 없어요', 16:'자주 그래요', 17:'자주 그래요',
+      18:'별로 그렇지 않아요', 20:'자주 그래요',
+      23:'대체로 안전하고 편리해요',
+      29:'남편 보내고 나서 하루 종일 말할 사람이 없어요' }
+  },
+  p3: {
+    key:'p3', emoji:'🧾', name:'오영자 어르신',
+    tag:'81세 여성 · 자녀 동거 · 기초생활수급',
+    desc:'집안일·약·관공서 일이 버거운, 살림 돌봄이 필요한 사례',
+    lv:{ 'A. 기본정보':2,'B. 신체 건강':2,'C. 일상 기능':3,'D. 인지 건강':2,'E. 정서 상태':1,
+         'F. 사회 관계':1,'G. 경제 재무':3,'H. 주거 환경':3,'I. 여가 활동':3,'J. 미래 준비':0,'K. 맞춤 서비스':1 },
+    ans:{ 1:'여성', 2:'1945', 3:'자녀 동거 가구', 4:'100만 원 미만',
+      7:'힘든 편이에요', 8:'자주 지쳐요', 9:'두세 가지 관리 중',
+      10:'가끔 불편해요', 11:'없어요',
+      14:'자주 불편해요', 16:'가끔 그래요', 17:'아니요, 괜찮아요',
+      18:'대체로 그런 편이에요', 20:'가끔 그래요',
+      23:'개보수가 꼭 필요해요',
+      29:'집안일이 버겁고, 약이 많아서 자꾸 헷갈려요. 관공서 일도 혼자 하기 어려워요' }
+  }
+};
+
+function buildPersonaAnswers(p) {
+  const out = {
+    'intro': { domain:'소개', ans:'네, 시작할게요!' },
+    'consent': { domain:'사전 동의', ans:'네, 모두 동의합니다' }
+  };
+  QUESTIONS.filter(q => typeof q.id === 'number').forEach(q => {
+    let v = p.ans[q.id];
+    if (v === undefined) {
+      if (q.type === 'text') v = '특별히 없어요';
+      else {
+        const pool = q.options.filter(o => !o.includes('답하고 싶지 않'));
+        const lv = (p.lv[q.domain] !== undefined) ? p.lv[q.domain] : 1;
+        v = pool[Math.min(lv, pool.length - 1)];
+      }
+    }
+    out[q.id] = { domain: q.domain, ans: v };
+  });
+  return out;
+}
+
+function loadPersona(key) {
+  const p = PERSONAS[key];
+  if (!p) return;
+  STATE.answers = buildPersonaAnswers(p);
+  saveCaseToStorage();
+  STATE.screen = 'result';
+  STATE.resultTab = 'domains';
+  render();
+}
+
 function downloadExcel() {
   const cases = getCases();
   if (cases.length === 0) { alert("저장된 데이터가 없습니다."); return; }
@@ -1083,6 +1172,23 @@ function renderAdmin() {
     <h3 style="font-size:22px; font-weight:800; margin-bottom:8px; color:var(--text-main);">⚙️ 관리자 워크시트</h3>
     <p style="font-size:14px; color:var(--text-sub); margin-bottom:20px;">총 ${cases.length}건의 자가 진단이 누적되었습니다.</p>
     
+    <div class="res-card" style="margin-bottom:14px;">
+      <h4>🎭 사례로 결과 바로 보기</h4>
+      <p style="font-size:14px; color:var(--text-sub); line-height:1.6; margin-bottom:13px;">문항에 직접 답하지 않아도, 아래 사례를 누르면 그 어르신의 점검 리포트가 바로 열려요.</p>
+      <div class="persona-list">
+        ${Object.keys(PERSONAS).map(k => { const p = PERSONAS[k]; return `
+          <div class="persona-card" onclick="loadPersona('${k}')">
+            <div class="persona-emoji">${p.emoji}</div>
+            <div class="persona-body">
+              <div class="persona-name">${p.name}</div>
+              <div class="persona-tag">${p.tag}</div>
+              <div class="persona-desc">${p.desc}</div>
+            </div>
+            <div class="persona-arrow">➔</div>
+          </div>`; }).join('')}
+      </div>
+    </div>
+
     <button class="btn-primary" style="margin-top:0; margin-bottom:16px; box-shadow:none;" onclick="downloadExcel()">엑셀(CSV) 다운로드 📥</button>
 
     <div class="admin-table-wrap">
@@ -1115,12 +1221,15 @@ function renderAdmin() {
     </div>
 
     <button class="btn-secondary" onclick="STATE.screen='result'; render();">← 결과 화면으로 이동</button>
+    <button class="back-btn" onclick="location.hash=''; location.reload();">🏠 처음 화면으로</button>
   `;
   return div;
 }
 
 // 초기 렌더링 실행
+// 주소 끝에 #admin 을 붙이면 관리자 모드로 바로 진입
+if (typeof location !== 'undefined' && location.hash === '#admin') STATE.screen = 'admin';
 render();
-</script>
+</script>",
 </body>
 </html>

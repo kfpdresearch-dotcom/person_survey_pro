@@ -173,6 +173,17 @@ body { background-color: #EFEFEF; display: flex; justify-content: center; align-
 
 .case-view-btn { font-size: 13px; font-weight: 800; color: #fff; background: var(--primary); border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer; white-space: nowrap; }
 
+/* ===== 시연용 사례 카드 ===== */
+.persona-list { display: flex; flex-direction: column; gap: 10px; }
+.persona-card { display: flex; align-items: center; gap: 12px; background: #fff; border: 1.5px solid var(--border-light); border-radius: 14px; padding: 14px 13px; cursor: pointer; transition: transform .15s ease, border-color .15s ease; }
+.persona-card:active { transform: scale(0.985); border-color: var(--primary); }
+.persona-emoji { font-size: 28px; flex-shrink: 0; }
+.persona-body { flex: 1; }
+.persona-name { font-size: 16.5px; font-weight: 800; color: var(--text-main); margin-bottom: 3px; }
+.persona-tag { font-size: 13.5px; font-weight: 700; color: var(--primary-dark); margin-bottom: 4px; }
+.persona-desc { font-size: 13.5px; color: var(--text-sub); line-height: 1.5; }
+.persona-arrow { font-size: 17px; font-weight: 800; color: var(--primary); flex-shrink: 0; }
+
 /* ===== 면책 · 안내 · 위기 카드 ===== */
 .disclaimer-fixed { margin: 14px 2px 6px; padding: 13px 14px; background: #FBF6F5; border: 1px solid #E8D5D0; border-radius: 12px; }
 .disclaimer-fixed p { font-size: 13.5px; line-height: 1.6; color: #7A4A40; margin: 0 0 7px; }
@@ -1971,53 +1982,92 @@ function viewCase(caseId) {
   render();
 }
 
-// 가상 사례 답변 생성 — 프로필(good/mid/risk)에 따라 가중 랜덤
-function makeVirtualAnswers(profile) {
-  const ans = {
+// ============================================================
+// 시연용 사례 3종 — 관리자 모드에서 결과를 바로 확인
+// ============================================================
+const PERSONAS = {
+  p1: {
+    key:'p1', emoji:'🦿', name:'최성길 어르신',
+    tag:'74세 남성 · 부부 가구 · 은퇴',
+    desc:'무릎과 집안 안전이 걱정인, 몸 돌봄이 필요한 사례',
+   lv:{'A. 기본정보':1,'B. 신체 건강':1,'C. 일상 기능':0,'D. 인지 건강':0,'E. 정서 상태':0,
+       'F. 사회 관계':0,'G. 경제 재무':1,'H. 주거 환경':1,'I. 여가·의미':0,'J. 안전·권리':0,'K. 맞춤 서비스':0},
+   ans:{1:'남성',2:'1952',3:'고등학교',4:'배우자 있음',6:'부부 가구',9:'해당 없음',10:'해당 없음',
+     11:'200만 원~300만 원 미만',14:'은퇴함',15:'배우자',
+     16:'그저 그래요',17:'가끔 기운이 달려요',18:'많이 힘들어요',19:'조금 힘들어요',20:'한 가지 관리 중',21:'1~3개',22:'168/70',
+     23:'세 끼 모두 규칙적으로 챙겨요',25:'가끔 뒤척여요',26:'무릎·다리',27:'하고 싶은 일을 못 할 만큼 힘들어요',
+     28:'거의 없어요',29:'두 번 이상 있어요',35:'별로 없어요',
+     37:'아니요, 여전히 즐거워요',38:'아니요, 괜찮아요',41:'없어요',44:'대체로 그런 편이에요',45:'없어요',
+     46:'건강이 나빠지는 것',47:'있음',48:'거의 없어요',
+     52:'빠듯하지만 감당해요',53:'잘하고 있어요',55:'조금 불편한 곳이 있어요',56:'욕실이 미끄러워요',
+     57:'집에서 계속 지내고 싶어요',61:'없음',64:'건강·운동',67:'월 3만 원 정도는 괜찮아요',
+     68:'무릎이 아파서 계단 오르내리기가 힘들고, 욕실에서 미끄러질까 겁이 나요',
+     69:'아프지 않고 아내와 산책 다니는 것',70:'네, 상담받고 싶어요'} },
+  p2: {
+    key:'p2', emoji:'💬', name:'한금자 어르신',
+    tag:'79세 여성 · 독거 · 3년 전 사별',
+    desc:'몸은 정정하나 외로움이 깊은, 마음 돌봄이 필요한 사례',
+   lv:{'A. 기본정보':1,'B. 신체 건강':1,'C. 일상 기능':0,'D. 인지 건강':0,'E. 정서 상태':3,
+       'F. 사회 관계':3,'G. 경제 재무':1,'H. 주거 환경':0,'I. 여가·의미':3,'J. 안전·권리':0,'K. 맞춤 서비스':0},
+   ans:{1:'여성',2:'1947',3:'초등학교',4:'사별',6:'독거 (혼자 생활)',9:'해당 없음',10:'해당 없음',
+     11:'100만 원~200만 원 미만',14:'은퇴함',15:'자녀',
+     16:'괜찮은 편이에요',17:'가끔 기운이 달려요',18:'힘들지 않아요',19:'편하게 다녀와요',20:'한 가지 관리 중',21:'1~3개',22:'158/54',
+     25:'가끔 뒤척여요',26:'없어요',27:'거의 영향 없어요',28:'주 1~2일',29:'없어요',35:'별로 없어요',
+     37:'자주 그래요',38:'자주 그래요',41:'자주 그래요',44:'별로 그렇지 않아요',45:'있고 아직 마음이 힘들어요',
+     46:'혼자 남거나 외로워지는 것',47:'없음',48:'자주 그래요',50:'거의 없어요',
+     52:'빠듯하지만 감당해요',53:'어느 정도 해요',55:'대체로 안전하고 편리해요',
+     57:'집에서 계속 지내고 싶어요',59:'허전하고 심심했어요',61:'없음',64:'정서·말벗',67:'월 3만 원 정도는 괜찮아요',
+     68:'남편 보내고 나서 하루 종일 말할 사람이 없어요',
+     69:'마음 맞는 사람들과 어울리며 지내는 것',70:'네, 상담받고 싶어요'} },
+  p3: {
+    key:'p3', emoji:'🧾', name:'오영자 어르신',
+    tag:'81세 여성 · 자녀 동거 · 기초생활수급',
+    desc:'집안일·약·관공서 일이 버거운, 살림 돌봄이 필요한 사례',
+   lv:{'A. 기본정보':2,'B. 신체 건강':2,'C. 일상 기능':3,'D. 인지 건강':1,'E. 정서 상태':1,
+       'F. 사회 관계':1,'G. 경제 재무':3,'H. 주거 환경':3,'I. 여가·의미':3,'J. 안전·권리':0,'K. 맞춤 서비스':1},
+   ans:{1:'여성',2:'1945',3:'무학',4:'사별',6:'자녀와 함께 거주',9:'기초생활수급자',10:'등급 신청 예정',
+     11:'100만 원 미만',14:'은퇴함',15:'자녀',
+     12:'매우 어렵다',16:'힘든 편이에요',17:'자주 지쳐요',18:'조금 숨이 차요',19:'조금 힘들어요',
+     20:'두세 가지 관리 중',21:'7개 이상',22:'150/50',23:'세 끼 모두 규칙적으로 챙겨요',
+     25:'가끔 뒤척여요',26:'없어요',27:'가끔 불편해요',28:'주 1~2일',29:'없어요',
+     30:'일부 도움이 필요해요',31:'3가지 이상 도움이 필요해요',32:'자주 잊어요',33:'거의 못 해요',
+     35:'자주 불편해요',58:'없어요',59:'허전하고 심심했어요',
+     37:'가끔 그래요',38:'아니요, 괜찮아요',41:'없어요',44:'대체로 그런 편이에요',45:'없어요',
+     46:'돈이 부족해지는 것',47:'있음',48:'가끔 그래요',50:'자주 이야기해요',
+     52:'자주 부족해요',53:'도움이 필요해요',55:'개보수가 꼭 필요해요',56:'냉난방이 잘 안 돼요',
+     57:'집에서 계속 지내고 싶어요',61:'없음',64:'가사·생활지원',67:'무료 서비스만 이용하고 싶어요',
+     68:'집안일이 버겁고, 약이 많아서 자꾸 헷갈려요. 관공서 일도 혼자 하기 어려워요',
+     69:'자식들한테 짐 안 되고 지내는 것',70:'네, 상담받고 싶어요'} },
+};
+
+// 사례 답변 생성 — 명시된 답은 그대로, 나머지는 영역별 난이도로 자동 선택
+function buildPersonaAnswers(p) {
+  const out = {
     'intro': { domain: '소개', ans: '네, 시작할게요!' },
     'consent': { domain: '사전 동의', ans: '네, 모두 동의합니다' }
   };
-  const rnd = Math.random;
-  const texts = {
-    68: { good: ['건강을 오래 유지하는 방법', '새로운 취미 찾기'],
-          mid:  ['무릎 통증 관리', '기억력이 예전 같지 않아 걱정'],
-          risk: ['외로움과 가라앉는 마음', '생활비 걱정과 무릎 통증'] },
-    69: { good: ['지금처럼 건강하게, 친구들과 여행 다니기', '손주들 크는 모습 오래 지켜보기'],
-          mid:  ['자녀들에게 짐이 되지 않고 지내기', '아프지 않고 산책 다니는 일상'],
-          risk: ['아프지 않고 마음 편안하게 지내기', '이야기 나눌 사람이 곁에 있었으면'] }
-  };
   QUESTIONS.filter(q => typeof q.id === 'number').forEach(q => {
-    let v;
-    if (q.id === 1) v = rnd() < 0.5 ? '남성' : '여성';
-    else if (q.id === 2) v = String(1938 + Math.floor(rnd() * 22));
-    else if (q.id === 22) {
-      const h = 152 + Math.floor(rnd() * 20);
-      const w = profile === 'risk' ? 40 + Math.floor(rnd() * 10) : 50 + Math.floor(rnd() * 22);
-      v = h + '/' + w;
+    let v = p.ans[q.id];
+    if (v === undefined) {
+      if (q.type === 'text') v = '특별히 없어요';
+      else {
+        const pool = q.options.filter(o => !o.includes('답하고 싶지 않'));
+        const lv = (p.lv[q.domain] !== undefined) ? p.lv[q.domain] : 1;
+        v = pool[Math.min(lv, pool.length - 1)];
+      }
     }
-    else if (q.type === 'text') {
-      const pool = texts[q.id] ? texts[q.id][profile] : ['특별히 없어요'];
-      v = pool[Math.floor(rnd() * pool.length)];
-    }
-    else {
-      const o = q.options, n = o.length;
-      const r = rnd();
-      let idx;
-      if (profile === 'good') idx = r < 0.78 ? 0 : (r < 0.96 ? Math.min(1, n - 1) : Math.min(2, n - 1));
-      else if (profile === 'risk') idx = r < 0.5 ? n - 1 : (r < 0.8 ? Math.max(n - 2, 0) : Math.floor(rnd() * n));
-      else idx = Math.min(n - 1, (r < 0.35 ? 1 : r < 0.75 ? Math.floor(n / 2) : (rnd() < 0.5 ? 0 : n - 1)));
-      if (o[idx] === '답하고 싶지 않음') idx = Math.max(0, idx - 1);
-      v = o[idx];
-    }
-    ans[q.id] = { domain: q.domain, ans: v };
+    out[q.id] = { domain: q.domain, ans: v };
   });
-  return ans;
+  return out;
 }
 
-function createVirtualCase(profile) {
+function loadPersona(key) {
+  const p = PERSONAS[key];
+  if (!p) return;
   STATE.pack = 'full';
-  STATE.answers = makeVirtualAnswers(profile);
-  saveCaseToStorage(true, profile);
+  STATE.answers = buildPersonaAnswers(p);
+  STATE.personaName = p.name;
+  saveCaseToStorage(true, p.name);
   STATE.screen = 'result';
   STATE.resultMode = 'tabs';
   STATE.resultTab = 'summary';
@@ -2262,12 +2312,19 @@ function renderAdmin() {
       <p style="font-size:14.5px; color:var(--text-sub); margin-bottom:16px;">누적 진단 ${cases.length}건 · 각 사례의 [결과 보기]를 누르면 해당 어르신의 진단 리포트가 그대로 열립니다.</p>
 
       <div class="res-card" style="margin-bottom:14px;">
-        <h4>🎭 가상 사례로 결과 미리보기</h4>
-        <p style="font-size:14.5px; color:var(--text-sub); line-height:1.6; margin-bottom:12px;">문항에 직접 답하지 않고도, 가상의 어르신 응답 70건을 자동 생성해 진단 리포트가 어떻게 나오는지 바로 확인할 수 있어요.</p>
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          <button class="btn-secondary" style="margin-top:0;" onclick="createVirtualCase('good')">🌿 건강하게 지내시는 어르신 사례 생성</button>
-          <button class="btn-secondary" style="margin-top:0;" onclick="createVirtualCase('mid')">🌤️ 일부 관리가 필요한 어르신 사례 생성</button>
-          <button class="btn-secondary" style="margin-top:0;" onclick="createVirtualCase('risk')">🚨 도움이 많이 필요한 어르신 사례 생성</button>
+        <h4>🎭 사례로 결과 바로 보기</h4>
+        <p style="font-size:14.5px; color:var(--text-sub); line-height:1.6; margin-bottom:13px;">문항에 직접 답하지 않아도, 아래 사례를 누르면 그 어르신의 점검 리포트가 바로 열려요.</p>
+        <div class="persona-list">
+          ${Object.keys(PERSONAS).map(k => { const p = PERSONAS[k]; return `
+            <div class="persona-card" onclick="loadPersona('${k}')">
+              <div class="persona-emoji">${p.emoji}</div>
+              <div class="persona-body">
+                <div class="persona-name">${p.name}</div>
+                <div class="persona-tag">${p.tag}</div>
+                <div class="persona-desc">${p.desc}</div>
+              </div>
+              <div class="persona-arrow">➔</div>
+            </div>`; }).join('')}
         </div>
       </div>
 
@@ -2291,7 +2348,7 @@ function renderAdmin() {
                   <div style="font-size:11px; color:var(--text-sub); margin-top:4px;">${new Date(c.createdAt).toLocaleDateString('ko-KR')}</div>
                 </td>
                 <td style="font-size:12.5px;">
-                  ${c.virtual ? '<span style="color:#B08A2E; font-weight:800;">가상</span><br>' : ''}
+                  ${c.virtual ? `<span style="color:#B08A2E; font-weight:800;">사례</span><br><span style="font-size:11.5px;">${c.profile || ''}</span><br>` : ''}
                   ${packShort[c.pack] || '전체'}
                 </td>
                 <td style="color:var(--primary-dark); font-weight:800; font-size:16px;">${c.score}</td>
@@ -2309,7 +2366,8 @@ function renderAdmin() {
   return div;
 }
 
-// 초기 렌더링 실행
+// 초기 렌더링 실행 (주소 끝에 #admin 을 붙이면 관리자 모드로 바로 진입)
+if (typeof location !== 'undefined' && location.hash === '#admin') STATE.screen = 'admin';
 render();
 </script>
 </body>
