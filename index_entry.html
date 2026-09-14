@@ -1048,6 +1048,7 @@ function renderResult() {
       <div style="margin-top:24px;">
         <button class="btn-primary" onclick="alert('퍼슨 전문 코디네이터 상담 예약 화면으로 이동합니다.');">전문 상담 예약하기</button>
         <button class="btn-secondary" onclick="STATE.screen='admin'; render();">⚙️ 관리자 워크시트 조회</button>
+        <button class="back-btn" onclick="goHome()">🌿 퍼슨 시작 화면으로</button>
       </div>
     </div>
   `;
@@ -1163,6 +1164,14 @@ function downloadExcel() {
   document.body.removeChild(link);
 }
 
+// 시작 페이지(index.html)로 이동 — 단독 실행 시에는 앱을 새로 시작
+function goHome() {
+  if (typeof location === 'undefined') return;
+  const path = location.pathname;
+  if (path.indexOf('index_entry') !== -1) location.href = path.replace(/index_entry\.html?$/, 'index.html');
+  else { location.hash = ''; location.reload(); }
+}
+
 function renderAdmin() {
   const cases = getCases();
   const div = document.createElement('div');
@@ -1221,7 +1230,7 @@ function renderAdmin() {
     </div>
 
     <button class="btn-secondary" onclick="STATE.screen='result'; render();">← 결과 화면으로 이동</button>
-    <button class="back-btn" onclick="location.hash=''; location.reload();">🏠 처음 화면으로</button>
+    <button class="back-btn" onclick="goHome()">🌿 퍼슨 시작 화면으로</button>
   `;
   return div;
 }
