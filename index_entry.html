@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>퍼슨(Person) — 따뜻한 노후 동행 진단</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<style>
+/* 따뜻하고 편안한 독자적 챗봇 디자인 시스템 */
+:root {
+  --bg-color: #F9F8F4;        
+  --chat-bg: #F0EBE1;         
+  --primary: #64826B;         
+  --primary-dark: #4A6350;    
+  --primary-light: #E4EBE5;
+  --text-main: #333333;       
+  --text-sub: #7A756F;
+  --bubble-bot: #FFFFFF;
+  --bubble-user: #64826B;
+  --border-light: #E6E1D6;
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  
+  /* 차트용 컬러 */
+  --sage: #6B8E7F; --amber: #C9963F; --rose: #A85D5D;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; font-family: 'Pretendard', sans-serif; }
+body { background-color: #EFEFEF; display: flex; justify-content: center; align-items: center; min-height: 100vh; min-height: 100dvh; }
+#app { width: 100%; max-width: 480px; height: 100vh; height: 100dvh; background: var(--bg-color); display: flex; flex-direction: column; position: relative; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.08); }
+
+/* 상단 네비게이션 */
+.top-nav { height: 60px; background: rgba(249,248,244,0.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-light); display: flex; flex-direction: column; justify-content: center; padding: 0 20px; flex-shrink: 0; z-index: 20; }
+.nav-header { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 6px; }
+.nav-title { font-size: 16px; font-weight: 700; color: var(--text-main); }
+.nav-prog { font-size: 13px; font-weight: 600; color: var(--primary); white-space: nowrap; margin-left: 10px; }
+.prog-bar-bg { width: 100%; height: 4px; background: var(--border-light); border-radius: 2px; overflow: hidden; }
+.prog-bar-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.4s ease-out; border-radius: 2px; }
+
+/* 채팅 영역 */
+.chat-window { flex: 1; padding: 20px; overflow-x: hidden; overflow-y: auto; background: var(--chat-bg); display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; }
+.msg-row { display: flex; align-items: flex-start; gap: 10px; max-width: 90%; animation: slideUp 0.3s ease-out; }
+.msg-row.bot { align-self: flex-start; }
+.msg-row.user { align-self: flex-end; flex-direction: row-reverse; }
+
+.avatar { width: 42px; height: 42px; border-radius: 16px; background: var(--primary); color: white; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(100,130,107,0.25); }
+.bubble { padding: 14px 18px; border-radius: var(--radius-lg); font-size: 16px; line-height: 1.55; word-break: break-word; letter-spacing: -0.01em; }
+.msg-row.bot .bubble { background: var(--bubble-bot); color: var(--text-main); border-top-left-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.msg-row.user .bubble { background: var(--bubble-user); color: #fff; border-top-right-radius: 4px; font-weight: 500; box-shadow: 0 2px 8px rgba(100,130,107,0.2); }
+
+/* 퍼슨의 공감 한마디 — 💡 전구 카드 (일반 말풍선과 확실히 구분) */
+.empathy-note { align-self: stretch; background: #FFFCF0; border: 1.5px solid #F0E4C0; border-left: 4px solid #E4B84C; border-radius: var(--radius-md); padding: 14px 16px; animation: slideUp 0.3s ease-out; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.empathy-label { font-size: 13px; font-weight: 800; color: #B08A2E; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+.empathy-text { font-size: 14.5px; line-height: 1.6; color: #6B5B33; }
+
+/* 이전으로 돌아가기 버튼 */
+.back-btn { width: 100%; margin-top: 8px; padding: 10px; background: none; border: none; color: var(--text-sub); font-size: 13.5px; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.back-btn:active { color: var(--primary-dark); }
+
+/* 입력 영역 (버튼) */
+.input-area { padding: 16px 20px; background: var(--bg-color); border-top: 1px solid var(--border-light); flex-shrink: 0; border-radius: 24px 24px 0 0; box-shadow: 0 -4px 16px rgba(0,0,0,0.03); }
+.opt-grid { display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto; padding-bottom: 10px; }
+.opt-btn { width: 100%; padding: 16px; background: #FFFFFF; border: 1.5px solid var(--border-light); border-radius: var(--radius-md); font-size: 16px; font-weight: 600; color: var(--text-main); text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+.opt-btn:active { transform: translateY(-1px); background: var(--primary-light); border-color: var(--primary); color: var(--primary-dark); }
+/* hover 효과는 마우스가 있는 기기(PC)에서만 적용 — 모바일에서 터치 후 초록색이 남는 현상 방지 */
+@media (hover: hover) and (pointer: fine) {
+  .opt-btn:hover { transform: translateY(-1px); background: var(--primary-light); border-color: var(--primary); color: var(--primary-dark); }
+}
+
+.text-group { display: flex; gap: 10px; }
+.text-input { flex: 1; padding: 16px; border: 1.5px solid var(--border-light); border-radius: var(--radius-md); font-size: 16px; background: #FFFFFF; outline: none; }
+.text-input:focus { border-color: var(--primary); }
+.submit-btn { padding: 0 24px; background: var(--primary); color: white; border: none; border-radius: var(--radius-md); font-size: 16px; font-weight: 700; cursor: pointer; }
+
+/* 스크린 애니메이션 */
+.screen-full { width: 100%; height: 100%; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; background: var(--bg-color); }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 결과 리포트 UI (프로토타입 스타일 통합) */
+.res-card { background: #FFFFFF; border-radius: var(--radius-md); padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); border: 1px solid var(--border-light); }
+.res-card h4 { font-size: 16px; color: var(--primary-dark); margin-bottom: 14px; border-bottom: 1px solid var(--border-light); padding-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.result-tabs { display: flex; gap: 8px; margin-bottom: 20px; background: #FFFFFF; padding: 6px; border-radius: 12px; border: 1px solid var(--border-light); }
+.tab-btn { flex: 1; padding: 12px 0; text-align: center; font-size: 14px; font-weight: 700; cursor: pointer; border-radius: 8px; transition: 0.2s; }
+.tab-btn.active { background: var(--primary-light); color: var(--primary-dark); }
+
+/* 버튼 */
+.btn-primary { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: var(--radius-md); font-size: 16px; font-weight: 700; cursor: pointer; text-align: center; margin-top: auto; box-shadow: 0 4px 12px rgba(100,130,107,0.3); }
+.btn-primary:active { background: var(--primary-dark); transform: scale(0.98); }
+.btn-secondary { width: 100%; padding: 16px; background: #FFFFFF; color: var(--text-main); border: 1.5px solid var(--border-light); border-radius: var(--radius-md); font-size: 16px; font-weight: 700; cursor: pointer; text-align: center; margin-top: 10px; }
+
+/* 차트 공통 */
+.viz-title { font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 14px; text-align: center; }
+.viz-legend { display: flex; justify-content: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+.viz-legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-sub); }
+.viz-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* 레이더 차트 */
+.radar-svg { width: 100%; max-width: 260px; height: auto; display: block; margin: 0 auto; }
+.radar-grid { stroke: var(--border-light); stroke-width: 1; fill: none; }
+.radar-axis { stroke: var(--border-light); stroke-width: 1; }
+.radar-data { fill: var(--sage); fill-opacity: 0.18; stroke: var(--sage); stroke-width: 2.5; stroke-linejoin: round; }
+.radar-pt { fill: var(--sage); stroke: #fff; stroke-width: 2; }
+.radar-lbl { font-size: 12px; font-weight: 700; fill: var(--text-main); text-anchor: middle; }
+.radar-score-lbl { font-size: 10px; fill: var(--text-sub); text-anchor: middle; font-variant-numeric: tabular-nums; }
+
+/* 바 차트 */
+.bar-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-name { font-size: 13px; color: var(--text-main); width: 84px; flex-shrink: 0; font-weight: 600; }
+.bar-track { flex: 1; height: 18px; background: var(--border-light); border-radius: 6px; overflow: hidden; position: relative; }
+.bar-fill { height: 100%; border-radius: 6px; background: var(--sage); }
+.bar-score { font-size: 13px; font-weight: 700; color: var(--text-main); font-variant-numeric: tabular-nums; width: 34px; text-align: right; flex-shrink: 0; }
+
+/* 원형 게이지 */
+.gauge-wrap { display: flex; flex-direction: column; align-items: center; margin: 10px 0 20px; }
+.gauge-svg { width: 160px; height: 160px; }
+.gauge-bg { fill: none; stroke: var(--border-light); stroke-width: 12; }
+.gauge-fg { fill: none; stroke: var(--primary); stroke-width: 12; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; }
+.gauge-text { font-size: 40px; font-weight: 800; fill: var(--primary-dark); text-anchor: middle; }
+.gauge-sub { font-size: 14px; fill: var(--text-sub); text-anchor: middle; }
+
+/* 진단 텍스트 */
+.diag-p { font-size: 14px; color: var(--text-main); line-height: 1.7; margin-bottom: 12px; background: var(--bg-color); padding: 14px; border-radius: 12px; }
+
+/* 관리자 테이블 */
+.admin-table-wrap { flex: 1; overflow-y: auto; background: #fff; border-radius: var(--radius-md); border: 1px solid var(--border-light); margin-bottom: 20px; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+.admin-table th { padding: 14px; background: var(--bg-color); position: sticky; top: 0; color: var(--text-sub); border-bottom: 1px solid var(--border-light); white-space: nowrap; }
+.admin-table td { padding: 14px; border-bottom: 1px solid var(--border-light); color: var(--text-main); }
+
+/* ===== 면책 · 안내 · 위기 카드 ===== */
+.disclaimer-fixed { margin: 14px 2px 6px; padding: 13px 14px; background: #FBF6F5; border: 1px solid #E8D5D0; border-radius: 12px; }
+.disclaimer-fixed p { font-size: 13px; line-height: 1.6; color: #7A4A40; margin: 0 0 7px; }
+.disclaimer-fixed p:last-child { margin-bottom: 0; }
+.disclaimer-fixed b { font-weight: 800; }
+.scope-card { background: #fff; border: 1.5px solid var(--border-light); border-radius: 16px; padding: 16px; margin: 10px 0 4px; }
+.scope-row { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; line-height: 1.6; margin-bottom: 10px; color: var(--text-main); }
+.scope-row:last-child { margin-bottom: 0; }
+.crisis-card { background: #FFF8F2; border: 2px solid #E9C6A8; border-radius: 16px; padding: 17px; margin-bottom: 12px; }
+.crisis-title { font-size: 16.5px; font-weight: 800; color: #9C5A2E; margin-bottom: 9px; }
+.crisis-body { font-size: 15px; line-height: 1.7; color: var(--text-main); margin-bottom: 11px; }
+.crisis-line { font-size: 15.5px; font-weight: 800; color: #9C5A2E; background: #fff; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// ============================================================
+// 1. 데이터셋 (소개, 문구 변경 및 호환성 보장)
+// ============================================================
+const QUESTIONS = [
+  { id: 'intro', domain: "소개", q: [
+    "반갑습니다, 어르신! 😊\n저는 어르신의 일상과 건강을 함께 보듬어 드리는 '퍼슨'이에요 🌿",
+    "어르신께서 더 행복하고 편안한 하루하루를 보내실 수 있도록, 몇 가지 여쭤보고 싶은 것이 있어요. 잠시 시간 괜찮으실까요?",
+    "10분 정도면 충분하고, 답변해 주신 내용은 익명 처리되어 안전하게 보관되니 편안한 마음으로 말씀해 주세요!",
+    "✅ 이 점검은 어르신께 도움이 될 만한 돌봄·생활 서비스를 찾아 드리는 것이에요.\n🚫 다만 병이 있는지 없는지는 알 수 없어요. 몸이 불편하시면 꼭 의사 선생님을 만나보셔야 해요."
+  ], options: ["네, 시작할게요!"] },
+  { id: 'consent', domain: "사전 동의", q: [
+    "어르신께 꼭 맞는 건강 관리와 맞춤 서비스를 추천해 드리려면, 최소한의 개인정보와 건강·마음에 관한 정보 수집 동의가 필요해요 📋",
+    "내용에 동의하시고 생활 점검을 시작해 보시겠어요? 😊"
+  ], options: ["네, 모두 동의합니다", "조금 더 설명이 필요해요"] },
+
+  { id: 1, domain: "A. 기본정보", q: [
+    "동의해 주셔서 감사합니다! 🙏 그럼 이제 본격적으로 시작해 볼게요.",
+    "먼저, 어르신의 성별이 어떻게 되시나요? 😊"
+  ], options: ["남성", "여성"] },
+  { id: 2, domain: "A. 기본정보", q: "태어나신 연도나 지금 연세는 어떻게 되시나요? ✍️\n아래 입력창에 숫자로 적어주세요. (예: 1958 또는 67)", type: "number", placeholder: "예: 1958 또는 67" },
+  { id: 3, domain: "A. 기본정보", q: "현재 살고 계신 가구 형태는 어떤 모습이신가요? 🏠", options: ["독거 (1인 가구)", "부부 가구", "자녀 동거 가구", "기타"] },
+  { id: 4, domain: "A. 기본정보", q: "한 달 평균, 스스로 자유롭게 쓰실 수 있는 소득 구간은 어느 정도인가요? 💰\n(편하실 때만 답해주세요)", options: ["100만 원 미만", "100만 원~200만 원 미만", "200만 원~300만 원 미만", "300만 원 이상", "답하고 싶지 않음"] },
+  { id: 5, domain: "A. 기본정보", q: "요즘 스스로 느끼시기에, 전반적인 살림이나 경제 상황은 어떠신가요? 🌱", options: ["매우 여유 있음", "약간 여유 있음", "보통", "약간 어려움", "매우 어려움"] },
+  { id: 6, domain: "A. 기본정보", q: "몸이 불편하시거나 도움이 필요할 때, 주로 도와주시는 분은 누구신가요? 🤝", options: ["배우자", "자녀/며느리/사위", "친척/이웃", "돌봄 서비스 (요양보호사 등)", "없음 (스스로 해결)"] },
+
+  { id: 7, domain: "B. 신체 건강", q: [
+    "이제 몸 건강 이야기를 나눠볼게요 💪",
+    "요즘 어르신 몸 상태는 어떠신가요?"
+  ], options: ["아주 좋아요", "괜찮은 편이에요", "그저 그래요", "힘든 편이에요", "많이 힘들어요"] },
+  { id: 8, domain: "B. 신체 건강", q: "요즘 하루를 보내고 나면 기운이 많이 달리시나요? 😴", options: ["기운이 괜찮아요", "가끔 기운이 달려요", "자주 지쳐요", "늘 기운이 없어요"] },
+  { id: 9, domain: "B. 신체 건강", q: "지금 병원에서 꾸준히 관리받고 계신 병이 있으신가요? 💊", options: ["없어요", "한 가지 관리 중", "두세 가지 관리 중", "네 가지 이상 관리 중"] },
+  { id: 10, domain: "B. 신체 건강", q: "몸이 아프거나 결려서 하루 생활이 불편하실 때가 있나요? 🩹", options: ["거의 없어요", "가끔 불편해요", "하고 싶은 일을 못 할 만큼 힘들어요"] },
+  { id: 11, domain: "B. 신체 건강", q: "최근 1년 동안 넘어지시거나 주저앉으신 적이 있나요? ⚠️", options: ["없어요", "한 번 있어요", "두 번 이상 있어요"] },
+
+  { id: 12, domain: "C. 일상 기능", q: [
+    "이번에는 하루하루 일상에 대해 여쭤볼게요 🍚",
+    "식사, 세면, 옷 입기 같은 기본적인 활동을 스스로 하시는 데 어려움이 있으신가요?"
+  ], options: ["완전 자립 (도움 불필요)", "부분 도움 필요", "전적으로 도움 필요"] },
+  { id: 13, domain: "C. 일상 기능", q: "집안일, 장보기, 외출, 약 챙겨 드시기 등 일상 관리에서 도움이 필요한 부분이 있으신가요? 🧺", options: ["스스로 잘함", "1~2가지 도움이 필요함", "3가지 이상 도움이 필요함"] },
+
+  { id: 14, domain: "D. 인지 건강", q: [
+    "이번에는 요즘 생활에서 느끼시는 점을 여쭤볼게요 🧠",
+    "요즘 깜빡하는 일 때문에 생활이 불편하신 적이 있나요?"
+  ], options: ["별로 없어요", "가끔 불편해요", "자주 불편해요", "생활이 힘들 만큼 자주 그래요"] },
+
+  { id: 16, domain: "E. 정서 상태", q: [
+    "이제 어르신의 마음 이야기를 들어볼게요 💚",
+    "요즘 예전에 즐겁던 일들이 시들하게 느껴지시나요?"
+  ], options: ["아니요, 여전히 즐거워요", "가끔 그래요", "자주 그래요"] },
+  { id: 17, domain: "E. 정서 상태", q: "요즘 마음이 가라앉거나 기운이 없다고 느끼시나요? ☁️", options: ["아니요, 괜찮아요", "가끔 그래요", "자주 그래요"] },
+  { id: 18, domain: "E. 정서 상태", q: "요즘 하루하루가 나름의 의미가 있다고 느끼시나요? 🌟", options: ["네, 충분히 그래요", "대체로 그런 편이에요", "그저 그래요", "별로 그렇지 않아요"] },
+
+  { id: 19, domain: "F. 사회 관계", q: [
+    "이번에는 곁에 계신 분들에 대해 여쭤볼게요 👨‍👩‍👧",
+    "어려운 일이 생겼을 때, 마음 편히 의논할 수 있는 분이 곁에 계신가요?"
+  ], options: ["있음", "없음"] },
+  { id: 20, domain: "F. 사회 관계", q: "요즘 혼자라고 느껴지거나 마음이 허전하실 때가 있으신가요? 🍂", options: ["거의 없어요", "가끔 그래요", "자주 그래요"] },
+  { id: 21, domain: "F. 사회 관계", q: "자녀나 가족분들과 직접 만나 이야기 나누시는 빈도는 어느 정도인가요? ☕", options: ["주 1회 이상", "월 1~2회", "몇 달에 한 번", "거의 안 만남/없음"] },
+
+  { id: 22, domain: "G. 경제 재무", q: [
+    "살림살이 이야기도 잠깐 나눠볼게요 💼",
+    "살림살이나 돈 관리를 스스로 해나가시는 데 어려움은 없으신가요?"
+  ], options: ["잘하고 있어요", "어느 정도 해요", "도움이 필요해요"] },
+  { id: 23, domain: "G. 경제 재무", q: "앞으로의 노후 생활에 대한 경제적 불안감이 있으신가요? 🤔", options: ["불안감 없음", "약간 불안함", "매우 불안함"] },
+
+  { id: 24, domain: "H. 주거 환경", q: "현재 살고 계신 집의 시설이나 주거환경에 불편한 점이 있으신가요? 🏡", options: ["불편함 없음 (안전함)", "문턱/욕실 등 약간 불편함", "개보수가 꼭 필요함"] },
+
+  { id: 25, domain: "I. 여가 활동", q: "평소 꾸준히 즐기시는 취미나 관심사 활동이 있으신가요? 🎨", options: ["꾸준히 하는 취미가 있음", "가끔 함", "특별한 취미 없음"] },
+
+  { id: 26, domain: "J. 미래 준비", q: "사전연명의료의향서 작성이나 유언 준비 등, 미래를 위한 준비에 관심이 있으신가요? 📜", options: ["이미 준비함", "관심 있고 준비하고 싶음", "아직 관심 없음"] },
+
+  { id: 27, domain: "K. 맞춤 서비스", q: [
+    "마지막으로, 어르신께 꼭 맞는 서비스를 찾기 위한 질문이에요 🎁",
+    "향후 돌봄이 필요해질 경우, 어떤 형태를 가장 선호하시나요?"
+  ], options: ["현재 집에서 계속 거주하며 돌봄받기", "주간보호센터 이용", "전문 돌봄시설/요양원 입소"] },
+  { id: 28, domain: "K. 맞춤 서비스", q: "퍼슨에서 제공하는 돌봄 케어 중, 가장 관심 있는 서비스는 무엇인가요? 💝", options: ["건강/식단 맞춤 케어", "동행 및 일상 케어", "자산 및 법률 자문", "정서/말벗 상담"] },
+  { id: 29, domain: "K. 맞춤 서비스", q: "지금 가장 먼저 해결하거나 상담받고 싶으신 고민 한 가지는 무엇인가요? ✍️\n건강·가족 이야기 등 민감한 내용이 포함될 수 있어요. 편하신 만큼만 적어주세요.", type: "text", placeholder: "예: 건강 관리, 노후 자산, 외로움 등" },
+  { id: 30, domain: "K. 맞춤 서비스", q: "마지막 질문이에요! 앞으로 꼭 이루고 싶거나 바라는 삶의 모습이 있다면 편하게 적어주세요 😊🌈", type: "text", placeholder: "예: 건강하게 가족들과 여행 다니기" }
+];
+
+// ============================================================
+// 상단 바 표시용 둥글둥글한 영역 이름 (내부 로직용 domain과 별개)
+// ============================================================
+const SOFT_LABELS = {
+  "소개": "첫인사",
+  "사전 동의": "마음 준비",
+  "A. 기본정보": "어르신 알아가기",
+  "B. 신체 건강": "몸 건강 이야기",
+  "C. 일상 기능": "하루하루 일상",
+  "D. 인지 건강": "기억과 생각",
+  "E. 정서 상태": "마음 들여다보기",
+  "F. 사회 관계": "곁에 있는 사람들",
+  "G. 경제 재무": "살림살이 이야기",
+  "H. 주거 환경": "우리 집 이야기",
+  "I. 여가 활동": "즐거운 취미 생활",
+  "J. 미래 준비": "앞날 그려보기",
+  "K. 맞춤 서비스": "어르신 맞춤 이야기"
+};
+function softLabel(domain) { return SOFT_LABELS[domain] || domain; }
+
+// ============================================================
+// 모바일 호환을 위한 임시 스토리지 우회 처리
+// ============================================================
+let memoryDB = {};
+function safeGetItem(key) {
+  try { return localStorage.getItem(key) || memoryDB[key] || null; }
+  catch(e) { return memoryDB[key] || null; }
+}
+function safeSetItem(key, val) {
+  try { localStorage.setItem(key, val); }
+  catch(e) { memoryDB[key] = val; }
+}
+
+function getCases() {
+  const data = safeGetItem('purson_cases');
+  return data ? JSON.parse(data) : [];
+}
+
+// ============================================================
+// 2. 동적 맞춤 공감 피드백 (모바일 지원 위해 '?.' 모두 회피)
+// ============================================================
+function generateDynamicEmpathy(domain, answers) {
+  if (domain === "소개" || domain === "사전 동의") return null;
+  const get = (id) => (answers[id] && answers[id].ans) || "";
+
+  // 같은 답변이면 항상 같은 문구가 나오도록(재렌더링 시 바뀜 방지),
+  // 해당 영역의 답변 내용만으로 시드를 만들어 여러 문구 중 하나를 고름
+  let seedStr = domain;
+  for (const k in answers) { if (answers[k].domain === domain) seedStr += answers[k].ans; }
+  let seed = 0;
+  for (let i = 0; i < seedStr.length; i++) seed = (seed * 31 + seedStr.charCodeAt(i)) % 100003;
+  const pick = (arr) => arr[seed % arr.length];
+
+  // ── A. 기본정보 ──
+  if (domain === "A. 기본정보") {
+    const house = get(3), eco = get(5), helper = get(6);
+    if (house.includes("독거") && helper.includes("없음")) return pick([
+      "혼자 지내시면서 어려운 일도 스스로 해결해 오셨군요. 대단하신 만큼, 버거운 순간도 많으셨을 것 같아요 🥺<br>이제는 퍼슨이 어르신의 든든한 곁이 되어드릴게요.",
+      "도움받을 곳 없이 홀로 생활을 꾸려오셨다니, 강인하신 만큼 외로운 날들도 있으셨겠지요.<br>앞으로는 퍼슨이 어르신 편에 서서 함께하겠습니다 🤝"
+    ]);
+    if (eco.includes("어려움")) return pick([
+      "살림살이 걱정에 마음이 무거우셨겠어요 😢<br>경제적 부담을 덜어드릴 수 있는 지원 제도를 퍼슨이 꼼꼼히 찾아드릴게요.",
+      "빠듯한 형편에도 꿋꿋이 생활을 이어오신 어르신, 정말 고생 많으셨어요.<br>받으실 수 있는 혜택과 지원을 퍼슨이 함께 챙겨드리겠습니다 💪"
+    ]);
+    if (eco.includes("여유")) return pick([
+      "경제적으로 안정된 기반을 잘 다져오셨네요! 그동안의 성실함이 느껴집니다 👏<br>이 든든한 기초 위에 건강과 마음까지 퍼슨이 함께 살펴드릴게요.",
+      "여유로운 살림을 일궈오신 모습이 참 멋지십니다 ✨<br>남은 이야기도 편안한 마음으로 들려주세요!"
+    ]);
+    return pick([
+      "기본적인 상황을 잘 알려주셔서 감사합니다 🌿<br>이제 어르신의 하루하루를 더 자세히, 세심하게 살펴볼게요!",
+      "어르신에 대해 조금씩 알아가고 있어요 😊<br>말씀해 주신 내용을 바탕으로 꼭 맞는 도움을 찾아드릴게요."
+    ]);
+  }
+
+  // ── B. 신체 건강 ──
+  if (domain === "B. 신체 건강") {
+    const health = get(7), fatigue = get(8), chronic = get(9), pain = get(10), fall = get(11);
+    const goods = [], cares = [];
+    if (health.includes("좋다") && !health.includes("나쁘다")) goods.push("전반적인 건강을 잘 지켜오신 점");
+    if (pain === "통증 없음") goods.push("통증 없이 지내고 계신 점");
+    if (chronic === "없음") goods.push("만성질환 없이 관리해 오신 점");
+    if (fall === "없음") goods.push("낙상 없이 안전하게 생활하신 점");
+    if (fall.includes("2회")) cares.push("여러 번 넘어지신 적이 있어 걸음걸음이 불안하고 무서우셨을 것 같아요. 낙상은 예방이 가장 중요하니, 퍼슨이 낙상 예방 운동과 집안 안전 점검을 꼭 챙겨드릴게요 ⚠️");
+    else if (fall.includes("1회")) cares.push("한 번 넘어지신 뒤로 걸을 때마다 조심스러우셨지요? 퍼슨이 다리 근력을 지키는 안전한 운동법을 함께 챙겨드릴게요 🚶");
+    if (pain.includes("심한")) cares.push("일상이 힘드실 만큼 통증이 심하시다니, 그동안 정말 고생 많으셨어요 😢 통증 관리를 최우선으로 주치의 건강 자문을 연결해 드릴게요.");
+    if (chronic.includes("4개")) cares.push("여러 질환을 한꺼번에 관리하시느라 약 챙기는 것만도 큰일이셨겠어요. 복약과 병원 일정을 퍼슨이 꼼꼼히 도와드리겠습니다 💊");
+    if (fatigue.includes("항상")) cares.push("늘 피로가 가시지 않아 하루하루가 버거우셨겠어요. 기력을 되찾는 식단과 생활 리듬을 퍼슨이 함께 살펴드릴게요 🍲");
+    if (cares.length) {
+      const care = pick(cares);
+      if (goods.length) return `${goods[0]}은 정말 다행이에요 😊<br>다만, ${care}`;
+      return care;
+    }
+    if (goods.length >= 3) return pick([
+      `${goods[0]}, 그리고 ${goods[1]}까지! 몸 관리를 정말 훌륭하게 해오셨어요 💪✨<br>이 활력을 오래오래 지키실 수 있도록 퍼슨이 함께하겠습니다.`,
+      `건강 관리의 모범이세요! 특히 ${goods[0]}이 돋보입니다 👏<br>지금의 건강을 더 단단하게 다지는 방법도 알려드릴게요.`
+    ]);
+    return pick([
+      "몸의 신호를 솔직하게 들려주셔서 감사해요 🙏<br>말씀해 주신 부분들을 바탕으로 건강을 더 편안하게 챙길 방법을 찾아드릴게요.",
+      "전반적으로 큰 무리 없이 지내고 계시는군요 😊<br>작은 불편함도 놓치지 않도록 퍼슨이 세심히 살피겠습니다."
+    ]);
+  }
+
+  // ── C. 일상 기능 ──
+  if (domain === "C. 일상 기능") {
+    const adl = get(12), iadl = get(13);
+    if (adl.includes("전적으로") || iadl.includes("3가지")) return pick([
+      "일상 곳곳에서 도움이 필요한 상황이시군요. 마음처럼 몸이 따라주지 않아 답답하셨을 것 같아요 🥺<br>식사부터 외출까지, 퍼슨의 일상 돌봄이 곁에서 든든히 도와드릴게요.",
+      "혼자 해내기 어려운 일이 늘어나면 속상한 마음도 커지지요. 충분히 이해합니다 😢<br>어르신의 하루가 다시 가벼워지도록 필요한 손길을 하나하나 연결해 드릴게요."
+    ]);
+    if (adl.includes("자립") && iadl.includes("스스로")) return pick([
+      "식사, 집안일, 외출까지 모두 스스로 해내고 계시다니 정말 대단하세요! 👏<br>이 단단한 자립의 힘을 오래 지키실 수 있게 퍼슨이 응원하겠습니다.",
+      "일상을 온전히 스스로 꾸려가시는 모습에서 건강한 생활 습관이 느껴져요 ✨<br>지금처럼만 유지하셔도 충분히 훌륭하십니다!"
+    ]);
+    return pick([
+      "대부분은 스스로 하시지만, 몇 가지는 도움이 있으면 한결 수월하시겠어요 🤝<br>딱 필요한 만큼의 지원을 퍼슨이 찾아드릴게요.",
+      "가끔 손이 필요한 부분이 있으시군요. 전혀 어려워하실 일이 아니에요 😊<br>작은 도움으로 일상이 훨씬 편해지도록 함께 준비해 봐요."
+    ]);
+  }
+
+  // ── D. 인지 건강 ──
+  if (domain === "D. 인지 건강") {
+    const mem = get(14), forget = get(15);
+    if (mem.includes("매우") || forget.includes("자주")) return pick([
+      "깜빡하는 일이 잦아져 속으로 걱정이 크셨지요? 그 불안한 마음, 충분히 공감합니다 🥺<br>기억력은 훈련으로 지킬 수 있어요. 퍼슨의 인지 건강 프로그램으로 함께 가꿔봐요.",
+      "기억이 예전 같지 않아 당황스러운 순간이 많으셨겠어요.<br>혼자 걱정하지 마세요. 퍼슨이 두뇌 활동 프로그램과 정기 점검으로 곁에서 함께하겠습니다 🧠"
+    ]);
+    if (mem.includes("전혀") && forget === "없음") return pick([
+      "기억력이 아주 또렷하시네요! 총명함이 그대로세요 🧠✨<br>지금의 좋은 기억력을 오래 지키는 두뇌 습관도 알려드릴게요.",
+      "약속도, 물건 둔 곳도 척척 기억하고 계시다니 정말 멋지십니다 👏<br>생각의 활력이 단단하게 유지되고 있어요!"
+    ]);
+    return pick([
+      "가끔 깜빡하는 건 나이가 들며 누구에게나 찾아오는 자연스러운 변화예요 🌱<br>그래도 더 좋아지시도록, 퍼슨과 함께 즐거운 기억 훈련을 해봐요.",
+      "기억력의 변화를 스스로 잘 알아차리고 계신 것 자체가 좋은 신호예요 😊<br>기억을 지키는 생활 습관을 퍼슨이 함께 챙겨드릴게요."
+    ]);
+  }
+
+  // ── E. 정서 상태 ──
+  if (domain === "E. 정서 상태") {
+    const joy = get(16), dep = get(17), mean = get(18);
+    if (dep.includes("매일") || joy.includes("매일")) return pick([
+      "요즘 마음이 많이 가라앉은 나날을 보내고 계시는군요. 그 마음을 솔직하게 말씀해 주셔서 고맙습니다 💚<br>혼자 견디지 마세요. 퍼슨의 정서 상담과 말벗 서비스가 어르신 곁을 지키겠습니다.",
+      "매일같이 무거운 마음을 안고 지내셨다니, 얼마나 지치셨을까요 😢<br>어르신의 이야기를 들어드릴 사람이 꼭 필요해요. 퍼슨이 그 첫 번째 편이 되어드릴게요."
+    ]);
+    if (dep.includes("일주일") || joy.includes("일주일")) return pick([
+      "일주일 넘게 마음이 가라앉아 있으셨군요. 많이 힘드셨겠어요 🥺<br>마음의 감기도 돌봄이 필요합니다. 퍼슨의 말벗 상담으로 함께 풀어가요.",
+      "즐겁던 일들이 시들해지면 마음이 참 허전하지요.<br>어르신의 마음에 다시 온기가 돌도록 퍼슨이 정서 동행을 준비하겠습니다 ☀️"
+    ]);
+    if (mean.includes("매우 그렇다")) return pick([
+      "삶의 의미와 목적을 뚜렷이 품고 계시다니, 그 자체로 큰 힘이에요 🌟<br>어르신의 단단한 마음이 노년기를 환하게 밝혀주고 있습니다.",
+      "마음이 안정되어 있고 삶의 방향도 분명하시네요 ✨<br>이 좋은 기운, 퍼슨이 오래오래 지켜드릴게요!"
+    ]);
+    return pick([
+      "마음속 이야기를 나눠주셔서 감사합니다 💚<br>기분 좋은 날이 더 많아지도록 퍼슨이 곁에서 함께할게요.",
+      "마음의 결을 솔직하게 들려주셨네요 😊<br>작은 즐거움을 하나씩 늘려가는 방법을 함께 찾아봐요."
+    ]);
+  }
+
+  // ── F. 사회 관계 ──
+  if (domain === "F. 사회 관계") {
+    const consult = get(19), lonely = get(20), family = get(21);
+    if (consult === "없음" || lonely.includes("자주")) return pick([
+      "마음을 터놓을 곳이 마땅치 않아 외로움이 깊으셨겠어요 🍂<br>사람의 온기가 가장 좋은 약입니다. 퍼슨의 말벗 동행이 어르신의 새로운 벗이 되어드릴게요.",
+      "혼자라고 느껴지는 순간이 잦으셨군요. 그 적적한 마음, 충분히 이해해요 🥺<br>이웃 모임과 말벗 프로그램으로 따뜻한 연결을 하나씩 만들어 드리겠습니다."
+    ]);
+    if (consult === "있음" && family.includes("주 1회")) return pick([
+      "가족들과 자주 만나고, 의지할 분도 곁에 계시다니 최고의 보물을 가지셨네요 🥰<br>이 따뜻한 관계가 어르신 건강의 큰 버팀목이 되고 있어요!",
+      "주변에 든든한 분들이 계셔서 정말 다행이에요 👨‍👩‍👧<br>관계의 온기가 이렇게 단단하니 마음 건강도 함께 지켜질 거예요."
+    ]);
+    return pick([
+      "의지할 분이 계시지만, 가끔은 적적한 마음이 드는 날도 있으시지요 ☕<br>퍼슨이 어르신의 이야기 상대가 되어 그 틈을 따뜻하게 채워드릴게요.",
+      "사람들과의 인연을 소중히 이어가고 계시네요 😊<br>만남의 기회가 더 많아지도록 퍼슨이 함께 넓혀드릴게요."
+    ]);
+  }
+
+  // ── G. 경제 재무 ──
+  if (domain === "G. 경제 재무") {
+    const conf = get(22), anx = get(23);
+    if (anx.includes("매우")) return pick([
+      "노후 살림 걱정에 마음 졸이는 날이 많으셨겠어요 😢<br>막연한 불안은 계획이 생기면 줄어듭니다. 퍼슨의 자산 자문이 하나씩 정리해 드릴게요.",
+      "앞날의 경제적 걱정이 크시군요. 그 무게를 혼자 지지 않으셔도 돼요.<br>어르신께 맞는 재무 설계와 지원 제도를 퍼슨이 함께 찾아드리겠습니다 💼"
+    ]);
+    if (conf.includes("충분히") && anx.includes("없음")) return pick([
+      "재무 관리에 자신도 있으시고 불안감도 없으시다니, 정말 야무지게 준비해 오셨네요 👏<br>이 안정감이 노후의 큰 자산입니다!",
+      "살림을 계획적으로 잘 꾸려오신 내공이 느껴져요 ✨<br>든든한 경제 기반 위에서 더 즐거운 노후를 그려봐요!"
+    ]);
+    return pick([
+      "돈 관리는 누구에게나 어렵고 신경 쓰이는 일이지요 🤔<br>궁금하신 부분이 생기면 퍼슨의 자산·법률 자문이 언제든 도와드릴게요.",
+      "노후 재무에 대한 고민을 나눠주셨군요 💼<br>차분히 하나씩 준비하면 마음도 한결 편안해지실 거예요. 퍼슨이 함께합니다."
+    ]);
+  }
+
+  // ── H. 주거 환경 ──
+  if (domain === "H. 주거 환경") {
+    const home = get(24);
+    if (home.includes("개보수")) return pick([
+      "집 안 곳곳이 불편해서 늘 조심조심 지내셨겠어요 😢<br>미끄럼 방지, 안전 손잡이 같은 개보수는 낙상 예방에 정말 중요해요. 퍼슨이 주거 안전 점검을 꼭 도와드릴게요 🔧",
+      "생활하시는 공간이 몸에 맞지 않으면 하루하루가 고단하지요.<br>어르신 몸에 꼭 맞는 안전한 집이 되도록 퍼슨이 개보수 지원을 함께 알아보겠습니다 🏡"
+    ]);
+    if (home.includes("불편함 없음")) return pick([
+      "안전하고 편안한 보금자리가 어르신의 일상을 든든히 받쳐주고 있네요 🏡✨<br>좋은 집은 건강의 절반입니다!",
+      "생활 공간이 안전하게 잘 갖춰져 있다니 정말 다행이에요 😊<br>편안한 집에서 건강한 일상을 이어가시길 바라요."
+    ]);
+    return pick([
+      "문턱이나 욕실처럼 작은 불편함도 오래 두면 다치실 수 있어요 🔍<br>미리미리 손보는 게 최고의 예방입니다. 퍼슨이 안전 점검을 도와드릴게요.",
+      "집 안의 사소한 불편함을 잘 짚어주셨네요 🏠<br>어르신이 더 안심하고 지내시도록 개선 방법을 함께 찾아드릴게요."
+    ]);
+  }
+
+  // ── I. 여가 활동 ──
+  if (domain === "I. 여가 활동") {
+    const hobby = get(25);
+    if (hobby.includes("꾸준히")) return pick([
+      "꾸준히 즐기시는 취미가 있으시다니 정말 멋져요! 🎨<br>좋아하는 일이 있는 하루는 훨씬 활기차지요. 그 즐거움을 오래 이어가시길 응원합니다!",
+      "나만의 취미를 가꿔오신 어르신, 삶을 즐길 줄 아는 분이시네요 ✨<br>취미 활동은 몸과 마음 건강에 최고의 보약입니다!"
+    ]);
+    if (hobby.includes("없음")) return pick([
+      "요즘은 딱히 재미 붙일 일이 없어 하루가 길게 느껴지실 때도 있겠어요 🍂<br>어르신 취향에 꼭 맞는 즐길 거리를 퍼슨이 함께 찾아드릴게요. 새로운 재미가 기다리고 있어요!",
+      "특별한 취미가 없으셔도 괜찮아요. 지금부터 찾으면 되니까요 😊<br>동네 프로그램부터 소소한 소일거리까지, 퍼슨이 어르신의 취미 찾기에 동행하겠습니다 🎨"
+    ]);
+    return pick([
+      "가끔이라도 즐기시는 활동이 있다니 좋은 출발이에요 😊<br>그 즐거움이 일상의 습관이 되도록 퍼슨이 살짝 거들어 드릴게요!",
+      "이따금 취미를 즐기고 계시는군요 🎶<br>조금만 더 자주 하시면 활력이 배가 됩니다. 함께 계획을 세워봐요!"
+    ]);
+  }
+
+  // ── J. 미래 준비 ──
+  if (domain === "J. 미래 준비") {
+    const fut = get(26);
+    if (fut.includes("이미")) return pick([
+      "미래를 미리 차분하게 준비해 두셨다니, 그 지혜와 결단이 정말 존경스럽습니다 🌟<br>준비된 만큼 남은 날들을 더 홀가분하게 즐기실 수 있을 거예요.",
+      "존엄한 앞날을 스스로 설계해 두신 모습이 깊은 울림을 줍니다 📜<br>정말 지혜로우세요. 퍼슨도 그 뜻을 곁에서 든든히 지지하겠습니다."
+    ]);
+    if (fut.includes("관심 있고")) return pick([
+      "미래 준비에 마음을 두고 계시는군요. 그 관심 자체가 훌륭한 첫걸음이에요 👣<br>사전연명의료의향서 작성부터 유언 준비까지, 절차를 퍼슨이 차근차근 도와드릴게요.",
+      "준비하고 싶은 마음이 있으시다니 정말 좋은 신호예요 😊<br>어렵게 느껴지는 절차들, 퍼슨의 법률 자문과 함께라면 생각보다 간단합니다."
+    ]);
+    return pick([
+      "아직은 먼 이야기처럼 느껴지실 수 있어요. 그것도 자연스러운 마음입니다 🌿<br>언젠가 궁금해지실 때, 퍼슨이 부담 없이 하나씩 알려드릴게요.",
+      "지금 당장 준비하지 않으셔도 괜찮아요 😊<br>마음의 준비가 되시는 날, 퍼슨이 곁에서 차분히 함께하겠습니다."
+    ]);
+  }
+
+  return pick([
+    "정성스러운 응답 감사합니다 🙏<br>마지막 단계까지 편안하게 함께 해볼까요? 😊",
+    "소중한 이야기를 들려주셔서 감사해요 💚<br>이제 거의 다 왔어요. 조금만 더 힘내주세요!"
+  ]);
+}
+
+// ============================================================
+// 3. App State & Engine
+// ============================================================
+const STATE = {
+  screen: 'chat', 
+  qIdx: 0,
+  answers: {},
+  resultTab: 'domains',
+  notice: null  // { pos: 'before'|'after', text: '...' } — 되돌아가기/재질문 안내
+};
+
+function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  
+  if (STATE.screen === 'chat') app.appendChild(renderChat());
+  else if (STATE.screen === 'result') app.appendChild(renderResult());
+  else if (STATE.screen === 'admin') app.appendChild(renderAdmin());
+}
+
+// ===== Chat Screen =====
+function renderChat() {
+  const q = QUESTIONS[STATE.qIdx];
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex; flex-direction:column; height:100%;';
+
+  // 실제 문항 진행도 계산 (intro와 consent 제외)
+  const actualQuestions = QUESTIONS.filter(item => typeof item.id === 'number');
+  const totalNum = actualQuestions.length;
+  const currentNum = typeof q.id === 'number' ? q.id : 0;
+  const progressText = currentNum > 0
+    ? `${softLabel(q.domain)} · ${currentNum}/${totalNum}`
+    : softLabel(q.domain);
+  const progressPercent = currentNum > 0 ? (currentNum / totalNum) * 100 : 0;
+
+  // 상단 네비게이션
+  const top = document.createElement('div');
+  top.className = 'top-nav';
+  top.innerHTML = `
+    <div class="nav-header">
+      <div class="nav-title">퍼슨 노후 동행 진단</div>
+      <div class="nav-prog">${progressText}</div>
+    </div>
+    <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${progressPercent}%"></div></div>
+  `;
+  div.appendChild(top);
+
+  // 채팅 창
+  const chatBody = document.createElement('div');
+  chatBody.className = 'chat-window';
+  chatBody.id = 'chat-body';
+
+  for (let i = 0; i <= STATE.qIdx; i++) {
+    const qData = QUESTIONS[i];
+    
+    // 되돌아왔을 때 안내 말풍선 (현재 질문 앞에 표시)
+    if (i === STATE.qIdx && STATE.notice && STATE.notice.pos === 'before') {
+      const nRow = document.createElement('div');
+      nRow.className = 'msg-row bot';
+      nRow.innerHTML = `<div class="avatar">P</div><div class="bubble">${STATE.notice.text.replace(/\n/g, '<br>')}</div>`;
+      chatBody.appendChild(nRow);
+    }
+
+    // 봇 질문 (문자열 또는 배열 지원 — 배열이면 카톡처럼 연속 말풍선으로 표시)
+    const qTexts = Array.isArray(qData.q) ? qData.q : [qData.q];
+    qTexts.forEach((txt, ti) => {
+      const botRow = document.createElement('div');
+      botRow.className = 'msg-row bot';
+      const avatarHtml = ti === 0
+        ? `<div class="avatar">P</div>`
+        : `<div class="avatar" style="visibility:hidden; height:0;"></div>`;
+      botRow.innerHTML = `${avatarHtml}<div class="bubble">${txt.replace(/\n/g, '<br>')}</div>`;
+      if (ti > 0) botRow.style.marginTop = '-8px';
+      chatBody.appendChild(botRow);
+    });
+
+    // 잘못된 입력 재질문 말풍선 (현재 질문 뒤에 표시)
+    if (i === STATE.qIdx && STATE.notice && STATE.notice.pos === 'after') {
+      const nRow = document.createElement('div');
+      nRow.className = 'msg-row bot';
+      nRow.innerHTML = `<div class="avatar" style="visibility:hidden; height:0;"></div><div class="bubble">${STATE.notice.text.replace(/\n/g, '<br>')}</div>`;
+      nRow.style.marginTop = '-8px';
+      chatBody.appendChild(nRow);
+    }
+
+    // 사용자 응답
+    if (STATE.answers[qData.id]) {
+      const userRow = document.createElement('div');
+      userRow.className = 'msg-row user';
+      userRow.innerHTML = `<div class="bubble">${STATE.answers[qData.id].ans}</div>`;
+      chatBody.appendChild(userRow);
+    }
+
+    // 영역 전환 시 채팅형 공감 피드백 출력 (포인트 UI 적용)
+    const nextQ = QUESTIONS[i+1];
+    if (STATE.answers[qData.id] && (!nextQ || nextQ.domain !== qData.domain)) {
+      const empText = generateDynamicEmpathy(qData.domain, STATE.answers);
+      if (empText) {
+        const empRow = document.createElement('div');
+        empRow.className = 'empathy-note';
+        empRow.innerHTML = `
+          <div class="empathy-label">💡 퍼슨의 공감 한마디</div>
+          <div class="empathy-text">${empText}</div>
+        `;
+        chatBody.appendChild(empRow);
+      }
+    }
+  }
+  div.appendChild(chatBody);
+
+  // 입력 영역
+  const ctrl = document.createElement('div');
+  ctrl.className = 'input-area';
+  ctrl.innerHTML = '';
+
+  if (q.options) {
+    const grid = document.createElement('div');
+    grid.className = 'opt-grid';
+    q.options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'opt-btn';
+      btn.innerHTML = `<span>${opt}</span> <span style="color:var(--primary); font-weight:800;">➔</span>`;
+      
+      // '조금 더 설명이 필요해요' 처리 (진행 방해 방지용 데모 우회)
+      if (opt === "조금 더 설명이 필요해요") {
+        btn.onclick = () => alert("원활한 맞춤 진단 진행을 위해 필수 수집 동의가 필요합니다. 동의를 눌러주세요.");
+      } else {
+        btn.onclick = () => answerQuestion(opt);
+      }
+      grid.appendChild(btn);
+    });
+    ctrl.appendChild(grid);
+  } else if (q.type === 'text' || q.type === 'number') {
+    const group = document.createElement('div');
+    group.className = 'text-group';
+    const inputType = q.type === 'number' ? 'number' : 'text';
+    const inputMode = q.type === 'number' ? 'numeric' : 'text';
+    group.innerHTML = `
+      <input type="${inputType}" inputmode="${inputMode}" id="text-in" class="text-input" placeholder="${q.placeholder || '답변을 입력해주세요'}" onkeypress="if(event.key==='Enter') submitText()">
+      <button class="submit-btn" onclick="submitText()">전송</button>
+    `;
+    ctrl.appendChild(group);
+
+    // 자동 키보드 포커스 적용 (DOM 렌더링 후 실행)
+    setTimeout(() => {
+      const inputEl = document.getElementById('text-in');
+      if(inputEl) {
+        inputEl.focus();
+        // iOS Safari 등 일부 환경에서는 스크롤 조정이 필요할 수 있음
+        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  }
+  div.appendChild(ctrl);
+
+  // 이전 답변 수정용 돌아가기 버튼 (첫 인사 화면 제외 모든 질문에 표시)
+  if (STATE.qIdx > 0) {
+    const back = document.createElement('button');
+    back.className = 'back-btn';
+    back.innerHTML = '↩️ 이전 대답을 잘못 눌렀어요. 다시 돌아갈래요!';
+    back.onclick = goBack;
+    ctrl.appendChild(back);
+  }
+
+  // 자동 스크롤
+  setTimeout(() => { chatBody.scrollTop = chatBody.scrollHeight; }, 50);
+  return div;
+}
+
+function submitText() {
+  const input = document.getElementById('text-in');
+  if (input && input.value.trim() !== '') {
+    answerQuestion(input.value.trim());
+  }
+}
+
+// 입력값 검증 (연도/연세 문항)
+function validateAnswer(q, ansText) {
+  if (q.id === 2) {
+    const n = parseInt(ansText, 10);
+    const okYear = n >= 1900 && n <= 2007;  // 출생 연도로 입력한 경우
+    const okAge  = n >= 19  && n <= 120;    // 연세로 입력한 경우
+    if (isNaN(n) || !(okYear || okAge)) {
+      return `앗, '${ansText}'은(는) 연도나 연세로 보기엔 조금 이상한 것 같아요 😅\n다시 한번 확인해서 적어주시겠어요? (예: 1958 또는 67)`;
+    }
+  }
+  return null;
+}
+
+// 이전 질문으로 되돌아가기
+function goBack() {
+  if (STATE.qIdx === 0 || STATE.screen !== 'chat') return;
+  delete STATE.answers[QUESTIONS[STATE.qIdx].id];
+  STATE.qIdx--;
+  delete STATE.answers[QUESTIONS[STATE.qIdx].id];
+  STATE.notice = { pos: 'before', text: "아이고, 잘못 누르셨군요! 😊 괜찮아요.\n방금 질문을 다시 여쭤볼게요." };
+  render();
+}
+
+function answerQuestion(ansText) {
+  const currentQ = QUESTIONS[STATE.qIdx];
+
+  // 잘못된 입력이면 저장하지 않고 재질문
+  const errMsg = validateAnswer(currentQ, ansText);
+  if (errMsg) {
+    STATE.notice = { pos: 'after', text: errMsg };
+    render();
+    return;
+  }
+
+  STATE.notice = null;
+  STATE.answers[currentQ.id] = { domain: currentQ.domain, ans: ansText };
+
+  if (STATE.qIdx < QUESTIONS.length - 1) {
+    STATE.qIdx++;
+    render();
+  } else {
+    saveCaseToStorage();
+    STATE.screen = 'result';
+    render();
+  }
+}
+
+// ============================================================
+// 4. Result Engine (프로토타입 수준 차트 및 로직 연동)
+// ============================================================
+function saveCaseToStorage() {
+  const cases = getCases();
+  const newCase = {
+    caseId: 'CASE-' + Date.now().toString().slice(-6),
+    createdAt: new Date().toISOString(),
+    answers: STATE.answers,
+    score: calculateLifeScore()
+  };
+  cases.push(newCase);
+  safeSetItem('purson_cases', JSON.stringify(cases));
+}
+
+// 8개 영역 점수화 로직 (100점 만점)
+function calcDomainScores() {
+  const a = STATE.answers;
+  const getOptScore = (ans, opts, scores) => {
+    if (!ans) return 50; 
+    const idx = opts.indexOf(ans.ans);
+    return idx >= 0 ? scores[idx] : 50;
+  };
+  
+  // B. 신체 건강
+  let b = 0;
+  b += getOptScore(a[7], ["아주 좋아요", "괜찮은 편이에요", "그저 그래요", "힘든 편이에요", "많이 힘들어요"], [100, 80, 60, 30, 0]);
+  b += getOptScore(a[8], ["기운이 괜찮아요", "가끔 기운이 달려요", "자주 지쳐요", "늘 기운이 없어요"], [100, 70, 30, 0]);
+  b += getOptScore(a[9], ["없어요", "한 가지 관리 중", "두세 가지 관리 중", "네 가지 이상 관리 중"], [100, 70, 40, 0]);
+  b += getOptScore(a[10], ["거의 없어요", "가끔 불편해요", "하고 싶은 일을 못 할 만큼 힘들어요"], [100, 60, 0]);
+  b += getOptScore(a[11], ["없어요", "한 번 있어요", "두 번 이상 있어요"], [100, 50, 0]);
+  
+  // C. 일상 기능
+  let c = 0;
+  c += getOptScore(a[12], ["완전 자립 (도움 불필요)", "부분 도움 필요", "전적으로 도움 필요"], [100, 50, 0]);
+  c += getOptScore(a[13], ["스스로 잘함", "1~2가지 도움이 필요함", "3가지 이상 도움이 필요함"], [100, 50, 0]);
+  
+  // D. 인지 건강
+  let d = 0;
+  d += getOptScore(a[14], ["별로 없어요", "가끔 불편해요", "자주 불편해요", "생활이 힘들 만큼 자주 그래요"], [100, 70, 30, 0]);
+  
+  // E. 정서 상태
+  let e = 0;
+  e += getOptScore(a[16], ["아니요, 여전히 즐거워요", "가끔 그래요", "자주 그래요"], [100, 55, 0]);
+  e += getOptScore(a[17], ["아니요, 괜찮아요", "가끔 그래요", "자주 그래요"], [100, 55, 0]);
+  e += getOptScore(a[18], ["네, 충분히 그래요", "대체로 그런 편이에요", "그저 그래요", "별로 그렇지 않아요"], [100, 75, 45, 10]);
+  
+  // F. 사회 관계
+  let f = 0;
+  f += getOptScore(a[19], ["있음", "없음"], [100, 0]);
+  f += getOptScore(a[20], ["거의 없어요", "가끔 그래요", "자주 그래요"], [100, 50, 0]);
+  f += getOptScore(a[21], ["주 1회 이상", "월 1~2회", "몇 달에 한 번", "거의 안 만남/없음"], [100, 70, 30, 0]);
+  
+  // G. 경제 재무
+  let g = 0;
+  g += getOptScore(a[22], ["잘하고 있어요", "어느 정도 해요", "도움이 필요해요"], [100, 60, 0]);
+  g += getOptScore(a[23], ["불안감 없음", "약간 불안함", "매우 불안함"], [100, 50, 0]);
+  
+  // H. 주거 환경
+  let h = getOptScore(a[24], ["불편함 없음 (안전함)", "문턱/욕실 등 약간 불편함", "개보수가 꼭 필요함"], [100, 60, 0]);
+  
+  // I. 여가 활동
+  let i = getOptScore(a[25], ["꾸준히 하는 취미가 있음", "가끔 함", "특별한 취미 없음"], [100, 50, 0]);
+  
+  const getStat = (score) => score >= 70 ? 'good' : score >= 40 ? 'manage' : 'risk';
+  
+  return [
+    { code: 'B', name: '신체 건강', score: Math.round(b/5), status: getStat(b/5) },
+    { code: 'C', name: '일상 기능', score: Math.round(c/2), status: getStat(c/2) },
+    { code: 'D', name: '인지 건강', score: Math.round(d), status: getStat(d) },
+    { code: 'E', name: '정서 상태', score: Math.round(e/3), status: getStat(e/3) },
+    { code: 'F', name: '사회 관계', score: Math.round(f/3), status: getStat(f/3) },
+    { code: 'G', name: '경제 재무', score: Math.round(g/2), status: getStat(g/2) },
+    { code: 'H', name: '주거 환경', score: Math.round(h),   status: getStat(h) },
+    { code: 'I', name: '여가 활동', score: Math.round(i),   status: getStat(i) }
+  ];
+}
+
+function calculateLifeScore() {
+  const domains = calcDomainScores();
+  const total = domains.reduce((sum, d) => sum + d.score, 0) / domains.length;
+  return Math.round(total);
+}
+
+// 상세 내러티브 자동 생성 — 어르신의 실제 답변을 촘촘히 반영한 개인화 진단
+function generateNarrative(domains, score) {
+  const a = STATE.answers;
+  const g = (id) => (a[id] && a[id].ans) || "";
+  const esc = (s) => s.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
+  // 연도 입력 시 나이로 변환
+  const rawNum = parseInt(g(2), 10);
+  let ageText = "";
+  if (!isNaN(rawNum)) {
+    const age = rawNum >= 1900 ? (new Date().getFullYear() - rawNum) : rawNum;
+    if (age > 0 && age < 130) ageText = `${age}세`;
+  }
+  const sex = g(1), house = g(3);
+
+  const byCode = {};
+  domains.forEach(d => byCode[d.code] = d);
+  const sorted = [...domains].sort((x, y) => y.score - x.score);
+  const strengths = sorted.filter(d => d.score >= 70);
+  const risks = sorted.filter(d => d.score < 40);
+  const highest = sorted[0], lowest = sorted[sorted.length - 1];
+
+  // ── P1. 종합 프로필 ──
+  let p1 = `${ageText ? ageText + " " : ""}${sex}${sex ? " 어르신, " : ""}${house ? house + " 형태로 생활하고 계십니다. " : ""}이번 문답에서 나온 생활 균형 점수는 100점 만점에 ${score}점이에요. `;
+  if (strengths.length >= 5) p1 += `전체 8개 영역 가운데 ${strengths.length}개 영역이 안정권(70점 이상)에 들어, 전반적으로 균형 잡힌 노년기를 보내고 계신 것으로 나타났습니다.`;
+  else if (risks.length >= 3) p1 += `여러 영역에서 세심한 관리가 필요하다는 신호가 함께 확인되어, 우선순위를 정해 하나씩 차근차근 돌봐가는 접근이 필요해 보입니다.`;
+  else p1 += `든든한 강점 영역과 보완이 필요한 영역이 함께 나타나, 잘 지켜오신 부분은 유지하고 취약한 부분을 집중 보강하는 전략이 알맞습니다.`;
+  p1 += ` 가장 든든한 영역은 '${highest.name}'(${highest.score}점), 가장 먼저 도와드릴 영역은 '${lowest.name}'(${lowest.score}점)이에요.`;
+
+  // ── P2. 신체 건강과 일상 기능 ──
+  const chronic = g(9), pain = g(10), fall = g(11), fatigue = g(8), adl = g(12), iadl = g(13);
+  let p2 = `🩺 [몸과 일상] 신체 건강 ${byCode['B'].score}점, 일상 기능 ${byCode['C'].score}점. `;
+  const bodyBits = [];
+  if (chronic === "없어요") bodyBits.push("병원에서 따로 관리 중인 병 없이");
+  else if (chronic) bodyBits.push(`병원에서 ${chronic} 지내시며`);
+  if (pain.includes("거의 없어요")) bodyBits.push("몸의 불편함 없이");
+  else if (pain.includes("못 할 만큼")) bodyBits.push("하고 싶은 일을 못 하실 만큼 몸이 불편한 가운데");
+  else if (pain) bodyBits.push("가끔 몸이 불편하신 가운데에도");
+  if (fatigue.includes("늘 기운")) bodyBits.push("늘 기운이 달리는 상태로");
+  else if (fatigue.includes("자주 지쳐")) bodyBits.push("자주 지치시는 가운데");
+  p2 += `${bodyBits.length ? bodyBits.join(", ") + " 지내고 계신다고 말씀해 주셨어요. " : ""}`;
+  if (adl.includes("자립") && iadl.includes("스스로")) p2 += "식사·세면·집안일 등 일상 활동을 온전히 스스로 해내고 계신 점은 큰 강점입니다.";
+  else if (adl.includes("전적") || iadl.includes("3가지")) p2 += "일상 곳곳에서 도움이 필요하다고 하셨어요. 방문 돌봄 연계를 서둘러 준비해 드릴게요.";
+  else p2 += "일상 관리의 일부 영역에서 부분적인 도움이 더해지면 생활이 한층 수월해질 것으로 보입니다.";
+  if (fall.includes("두 번")) p2 += " 지난 1년에 두 번 이상 넘어지신 적이 있다고 하셨어요. 집 안 안전 점검과 안전손잡이 설치를 먼저 챙겨 드리면 좋겠습니다.";
+  else if (fall.includes("한 번")) p2 += " 지난 1년에 한 번 넘어지신 적이 있다고 하셨어요. 미끄럼 방지와 가벼운 근력 활동을 함께 준비해 드릴게요.";
+
+  // ── P3. 인지와 마음 ──
+  const mem = g(14), dep = g(17), joy = g(16), mean = g(18);
+  let p3 = `🧠 [기억과 마음] 인지 건강 ${byCode['D'].score}점, 정서 상태 ${byCode['E'].score}점. `;
+  if (mem.includes("별로 없어요")) p3 += "깜빡하는 일로 생활이 불편하신 적은 별로 없다고 하셨고, ";
+  else if (mem.includes("생활이 힘들") || mem.includes("자주 불편")) p3 += "깜빡하는 일 때문에 생활이 불편하실 때가 자주 있다고 하셨어요. 즐겁게 머리를 쓰는 활동을 함께 찾아드릴게요. ";
+  else p3 += "가끔 깜빡하는 일로 불편하신 정도라고 하셨고, ";
+  if (dep.includes("자주 그래요") || joy.includes("자주 그래요")) p3 += "요즘 마음이 가라앉는 날이 자주 있다고 하셨어요. 이 부분이 가장 마음이 쓰입니다. 마음을 나눌 상대를 연결해 드리는 일을 먼저 챙겨 드릴게요.";
+  else if (dep.includes("가끔 그래요") || joy.includes("가끔 그래요")) p3 += "가끔 마음이 가라앉으실 때가 있다고 하셨어요. 이야기 나눌 사람이 곁에 있으면 한결 나아지실 수 있어요.";
+  else if (mean.includes("충분히") || mean.includes("대체로")) p3 += "하루하루가 나름의 의미가 있다고 느끼신다고 하셨어요. 이 단단한 마음은 어르신의 가장 큰 자원이에요.";
+  else p3 += "마음은 대체로 편안하신 편이에요. 즐거움을 느끼는 활동을 조금씩 늘려가시면 더 좋아지실 거예요.";
+
+  // ── P4. 관계와 여가 ──
+  const consult = g(19), lonely = g(20), family = g(21), hobby = g(25);
+  let p4 = `🤝 [사람과 즐거움] 사회 관계 ${byCode['F'].score}점, 여가 활동 ${byCode['I'].score}점. `;
+  if (consult === "없음" || lonely.includes("자주 그래요")) p4 += "마음을 터놓을 분이 부족하고, 혼자라고 느껴지실 때가 자주 있다고 하셨어요. 말벗 프로그램과 지역 모임으로 따뜻한 연결부터 만들어 드릴게요. ";
+  else if (consult === "있음" && family.includes("주 1회")) p4 += "의지할 수 있는 분이 곁에 계시고 가족과도 자주 만나신다고 하셨어요. 관계가 참 든든하십니다. ";
+  else p4 += "기본적인 관계망은 유지되고 있으나, 만남과 소통의 기회를 조금 더 늘리시면 좋겠습니다. ";
+  if (hobby.includes("꾸준히")) p4 += "꾸준한 취미 활동은 어르신 일상의 활력소이자 큰 강점입니다.";
+  else if (hobby.includes("없음")) p4 += "현재 특별한 취미가 없으신 점은 아쉬운 부분으로, 취향에 맞는 즐길 거리를 찾는 것부터 퍼슨이 함께 하겠습니다.";
+  else p4 += "가끔 즐기시는 활동을 정기적인 습관으로 만들어가면 삶의 만족도가 한층 높아질 것입니다.";
+
+  // ── P5. 살림·집·앞날 ──
+  const conf = g(22), anx = g(23), home = g(24), fut = g(26);
+  let p5 = `🏡 [살림과 앞날] 경제 재무 ${byCode['G'].score}점, 주거 환경 ${byCode['H'].score}점. `;
+  if (anx.includes("매우")) p5 += "앞으로의 생활비가 많이 걱정된다고 하셨어요. 받으실 수 있는 지원 제도부터 빠짐없이 찾아 안내해 드릴게요. ";
+  else if (conf.includes("잘하고 있어요")) p5 += "살림과 돈 관리를 잘 해오고 계신다고 하셨어요. 든든한 기반이에요. ";
+  else p5 += "살림은 무리 없이 이어가고 계세요. 필요하실 때 무료 금융·법률 상담을 활용하시면 더 든든해집니다. ";
+  if (home.includes("개보수")) p5 += "집을 손봐야 할 곳이 있다고 하셨어요. 안전손잡이·미끄럼 방지 같은 집 안 안전 점검을 먼저 챙겨 드리면 좋겠습니다. ";
+  else if (home.includes("약간")) p5 += "문턱·욕실 등 집안의 작은 불편은 미리 손보시면 훨씬 편안해지실 거예요. ";
+  else if (home) p5 += "주거 환경이 안전하게 갖춰져 있는 점도 든든한 기반입니다. ";
+  if (fut.includes("이미")) p5 += "미래 준비(연명의료의향서·유언 등)까지 이미 마치신 점은 매우 지혜로운 대비입니다.";
+  else if (fut.includes("관심")) p5 += "미래 준비에 관심을 두고 계신 만큼, 사전연명의료의향서 작성 등 절차를 퍼슨이 차근차근 안내해 드리겠습니다.";
+
+  // ── P6. 퍼슨의 맞춤 제안 ──
+  const carePref = g(27), interest = g(28), concern = g(29), wish = g(30);
+  let p6 = `🌿 [퍼슨의 제안] 지금 가장 먼저 도와드릴 영역은 '${lowest.name}'이에요. 이 영역이 조금씩 풀리면 다른 영역들도 함께 좋아지는 선순환이 시작됩니다. `;
+  if (carePref.includes("집에서")) p6 += "정든 집에서 계속 지내시길 원하시는 만큼, 방문형(재가) 돌봄 중심으로 계획을 설계하겠습니다. ";
+  else if (carePref.includes("주간보호")) p6 += "주간보호센터 이용을 선호하시는 만큼, 낮 시간 돌봄과 이동 지원을 중심으로 계획을 설계하겠습니다. ";
+  else if (carePref) p6 += "전문 시설 돌봄을 염두에 두고 계신 만큼, 신뢰할 수 있는 시설 정보와 입소 준비를 함께 살펴드리겠습니다. ";
+  if (interest) p6 += `관심을 보여주신 '${interest}' 서비스를 우선 연계해 드리고, `;
+  if (concern) p6 += `직접 말씀해 주신 가장 큰 고민인 "${esc(concern)}"을(를) 첫 상담의 최우선 주제로 다루겠습니다. `;
+  if (wish) p6 += `무엇보다 "${esc(wish)}"라는 어르신의 바람이 현실이 되도록, 퍼슨 전담 코디네이터가 곁에서 끝까지 동행하겠습니다.`;
+  else p6 += "퍼슨 전담 코디네이터가 곁에서 끝까지 동행하겠습니다.";
+
+  return [p1, p2, p3, p4, p5, p6];
+}
+
+// 차트 렌더링 함수들
+function renderRadarCard(domains) {
+  let html = `<div class="res-card"><div class="viz-title">영역별 밸런스 (레이더 차트)</div>`;
+  const cx = 130, cy = 130, R = 80;
+  const n = domains.length;
+  const angles = domains.map((_, i) => -Math.PI/2 + (2*Math.PI * i / n));
+  
+  let grid = '';
+  for (let lv = 1; lv <= 4; lv++) {
+    const lr = R * lv / 4;
+    const pts = angles.map(a => `${cx + lr*Math.cos(a)},${cy + lr*Math.sin(a)}`).join(' ');
+    grid += `<polygon class="radar-grid" points="${pts}"/>`;
+  }
+  angles.forEach(a => {
+    grid += `<line class="radar-axis" x1="${cx}" y1="${cy}" x2="${cx + R*Math.cos(a)}" y2="${cy + R*Math.sin(a)}"/>`;
+  });
+  
+  const dataPts = angles.map((a, i) => {
+    const dr = R * domains[i].score / 100;
+    return [cx + dr*Math.cos(a), cy + dr*Math.sin(a)];
+  });
+  const dataPath = dataPts.map(p => p.join(',')).join(' ');
+  
+  let dots = dataPts.map((p, i) => {
+    return `<circle class="radar-pt" cx="${p[0]}" cy="${p[1]}" r="4"/>`;
+  }).join('');
+  
+  let lbls = '';
+  angles.forEach((a, i) => {
+    const lx = cx + (R + 25) * Math.cos(a);
+    const ly = cy + (R + 20) * Math.sin(a);
+    lbls += `<text class="radar-lbl" x="${lx}" y="${ly}">${domains[i].name}</text>`;
+    lbls += `<text class="radar-score-lbl" x="${lx}" y="${ly+14}">${domains[i].score}점</text>`;
+  });
+  
+  html += `<svg class="radar-svg" viewBox="0 0 260 260">${grid}<polygon class="radar-data" points="${dataPath}"/>${dots}${lbls}</svg>`;
+  html += `<div class="viz-legend">
+    <div class="viz-legend-item"><span class="viz-legend-dot" style="background:var(--sage)"></span>정상(70+)</div>
+    <div class="viz-legend-item"><span class="viz-legend-dot" style="background:var(--amber)"></span>주의(40-69)</div>
+    <div class="viz-legend-item"><span class="viz-legend-dot" style="background:var(--rose)"></span>집중 관리(~39)</div>
+  </div></div>`;
+  return html;
+}
+
+function renderBarChartCard(domains) {
+  let html = `<div class="res-card"><div class="viz-title">영역별 세부 점수</div><div class="bar-list">`;
+  domains.forEach(d => {
+    const color = d.status === 'good' ? 'var(--sage)' : d.status === 'manage' ? 'var(--amber)' : 'var(--rose)';
+    html += `
+      <div class="bar-row">
+        <div class="bar-name">${d.name}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.max(5, d.score)}%; background:${color};"></div></div>
+        <div class="bar-score">${d.score}</div>
+      </div>
+    `;
+  });
+  html += `</div></div>`;
+  return html;
+}
+
+function renderGaugeCard(score) {
+  const r = 65; const cx = 80, cy = 80; const circ = 2 * Math.PI * r;
+  const fillLen = circ * (score / 100);
+  const color = score >= 70 ? 'var(--sage)' : score >= 40 ? 'var(--amber)' : 'var(--rose)';
+  
+  return `
+    <div class="res-card" style="text-align:center;">
+      <h4 style="border:none; justify-content:center;">📊 생활 균형 점수</h4>
+      <div class="gauge-wrap">
+        <svg class="gauge-svg" viewBox="0 0 160 160">
+          <circle class="gauge-bg" cx="${cx}" cy="${cy}" r="${r}"/>
+          <circle class="gauge-fg" cx="${cx}" cy="${cy}" r="${r}" stroke-dasharray="${fillLen} ${circ}" style="stroke:${color};"/>
+          <text class="gauge-text" x="${cx}" y="${cy+10}" fill="${color}">${score}</text>
+          <text class="gauge-sub" x="${cx}" y="${cy+30}">/ 100점</text>
+        </svg>
+      </div>
+      <p style="font-size:14px; color:var(--text-sub);">현재 어르신의 전반적인 삶의 균형을 나타내는 종합 점수입니다.</p>
+    </div>
+  `;
+}
+
+function disclaimerBlock() {
+  return `
+    <div class="disclaimer-fixed">
+      <p><b>본 서비스는 의료기기가 아니므로 질병 유무를 판단할 수 없으며, 질병 유무 판단을 위해서는 의사의 검진이 필요합니다.</b></p>
+      <p>이 결과는 의료적 진단이 아니며, 전문 의료인의 진료를 대체하지 않습니다. 어르신의 답변을 바탕으로 도움이 될 만한 생활·돌봄 서비스를 안내해 드리는 참고 자료입니다.</p>
+    </div>
+  `;
+}
+
+function crisisBlock() {
+  const a = STATE.answers;
+  const g = (id) => (a[id] && a[id].ans) || "";
+  if (g(17).includes("자주 그래요") || g(16).includes("자주 그래요")) {
+    return `
+      <div class="crisis-card">
+        <div class="crisis-title">🕯️ 마음이 많이 무거우셨겠어요</div>
+        <div class="crisis-body">혼자 견디지 않으셔도 돼요. 언제든 편하게 이야기 나누실 수 있는 곳이 있어요.</div>
+        <div class="crisis-line">☎️ 자살예방상담전화 <b>109</b> (24시간)</div>
+        <div class="crisis-line">☎️ 정신건강상담전화 <b>1577-0199</b></div>
+      </div>`;
+  }
+  return '';
+}
+
+function renderResult() {
+  const div = document.createElement('div');
+  div.className = 'screen-full';
+  
+  const domains = calcDomainScores();
+  const lifeScore = calculateLifeScore();
+  const narrative = generateNarrative(domains, lifeScore);
+
+  div.innerHTML = `
+    <h3 style="font-size:22px; font-weight:800; margin-bottom:16px; color:var(--text-main);">📋 퍼슨 생활 점검 리포트</h3>
+    
+    <div class="result-tabs">
+      <div class="tab-btn ${STATE.resultTab==='domains'?'active':''}" onclick="STATE.resultTab='domains'; render();">영역별 상태</div>
+      <div class="tab-btn ${STATE.resultTab==='score'?'active':''}" onclick="STATE.resultTab='score'; render();">점수 요약</div>
+      <div class="tab-btn ${STATE.resultTab==='diagnosis'?'active':''}" onclick="STATE.resultTab='diagnosis'; render();">요약 진단</div>
+    </div>
+
+    <div style="flex:1; overflow-y:auto; padding-bottom:20px;">
+      ${STATE.resultTab === 'domains' ? `
+        ${crisisBlock()}
+        ${renderRadarCard(domains)}
+        ${renderBarChartCard(domains)}
+        ${disclaimerBlock()}
+      ` : ''}
+
+      ${STATE.resultTab === 'score' ? `
+        ${renderGaugeCard(lifeScore)}
+        <div class="res-card" style="text-align:center;">
+          <h4 style="border:none; justify-content:center;">📝 이번 점검 요약</h4>
+          <p style="font-size:15.5px; color:var(--text-main); line-height:1.75; margin-top:6px;">
+            어르신께서 <b style="color:var(--primary-dark);">29가지</b> 이야기를 나눠주셨어요.<br>
+            <b style="color:var(--primary-dark);">${domains.filter(d=>d.status!=='good').length}개 영역</b>에서 도움이 될 만한 부분을 찾았고,<br>
+            <b style="color:#4E7A58;">${domains.filter(d=>d.status==='good').length}개 영역</b>은 이미 아주 잘 지키고 계세요.
+          </p>
+        </div>
+        ${disclaimerBlock()}
+      ` : ''}
+
+      ${STATE.resultTab === 'diagnosis' ? `
+        <div class="res-card">
+          <h4>💡 어르신의 하루, 자세히 살펴보기</h4>
+          ${narrative.map(p => `<div class="diag-p">${p}</div>`).join('')}
+        </div>
+        <div class="res-card" style="border:1.5px solid var(--primary); background:var(--primary-light);">
+          <h4 style="color:var(--primary-dark); border-bottom-color:var(--primary);">📦 퍼슨 추천 맞춤 서비스</h4>
+          <p style="font-size:16px; font-weight:700; color:var(--primary-dark); margin-bottom:6px;">[주 1회] 정서 동행 & 주치의 건강 자문</p>
+          <p style="font-size:14px; color:var(--text-sub); line-height:1.5;">전담 코디네이터가 주기적으로 찾아뵙고 어르신의 마음과 건강을 함께 세심히 돌봅니다.</p>
+          <p style="font-size:12.5px; color:var(--text-sub); line-height:1.55; margin-top:10px;">※ 본 안내는 문답 기반 참고자료이며, 공공서비스의 공식 자격 판정을 대체하지 않습니다. 정식 돌봄 지원 신청은 주민센터·읍면동에서 하실 수 있어요.</p>
+        </div>
+        ${disclaimerBlock()}
+      ` : ''}
+
+      <div style="margin-top:24px;">
+        <button class="btn-primary" onclick="alert('퍼슨 전문 코디네이터 상담 예약 화면으로 이동합니다.');">전문 상담 예약하기</button>
+        <button class="btn-secondary" onclick="STATE.screen='admin'; render();">⚙️ 관리자 워크시트 조회</button>
+      </div>
+    </div>
+  `;
+  return div;
+}
+
+// ============================================================
+// 5. Admin Dashboard & Excel Export
+// ============================================================
+function downloadExcel() {
+  const cases = getCases();
+  if (cases.length === 0) { alert("저장된 데이터가 없습니다."); return; }
+  
+  let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+  const actualQuestions = QUESTIONS.filter(q => typeof q.id === 'number');
+  const headers = ["ID", "진단일시", "총점", ...actualQuestions.map(q => `Q${q.id}.${q.domain}`)];
+  csvContent += headers.map(h => `"${h}"`).join(",") + "\n";
+  
+  cases.forEach(c => {
+    let row = `"${c.caseId}","${new Date(c.createdAt).toLocaleString('ko-KR')}","${c.score}"`;
+    actualQuestions.forEach(q => {
+      const ansObj = c.answers[q.id];
+      const ansVal = ansObj ? ansObj.ans.replace(/"/g, '""') : ''; 
+      row += `,"${ansVal}"`;
+    });
+    csvContent += row + "\n";
+  });
+  
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "퍼슨_진단응답_데이터.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function renderAdmin() {
+  const cases = getCases();
+  const div = document.createElement('div');
+  div.className = 'screen-full';
+  
+  div.innerHTML = `
+    <h3 style="font-size:22px; font-weight:800; margin-bottom:8px; color:var(--text-main);">⚙️ 관리자 워크시트</h3>
+    <p style="font-size:14px; color:var(--text-sub); margin-bottom:20px;">총 ${cases.length}건의 자가 진단이 누적되었습니다.</p>
+    
+    <button class="btn-primary" style="margin-top:0; margin-bottom:16px; box-shadow:none;" onclick="downloadExcel()">엑셀(CSV) 다운로드 📥</button>
+
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID / 생성일</th>
+            <th>점수</th>
+            <th>Q1. 성별</th>
+            <th>Q2. 연령</th>
+            <th>Q7. 건강상태</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${cases.slice().reverse().map(c => `
+            <tr>
+              <td>
+                <div style="font-weight:700;">${c.caseId}</div>
+                <div style="font-size:11px; color:var(--text-sub); margin-top:4px;">${new Date(c.createdAt).toLocaleDateString('ko-KR')}</div>
+              </td>
+              <td style="color:var(--primary-dark); font-weight:800; font-size:15px;">${c.score}</td>
+              <td>${(c.answers[1] && c.answers[1].ans) || '-'}</td>
+              <td>${(c.answers[2] && c.answers[2].ans) || '-'}</td>
+              <td>${(c.answers[7] && c.answers[7].ans) || '-'}</td>
+            </tr>
+          `).join('')}
+          ${cases.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-sub);">아직 저장된 응답이 없습니다.</td></tr>` : ''}
+        </tbody>
+      </table>
+    </div>
+
+    <button class="btn-secondary" onclick="STATE.screen='result'; render();">← 결과 화면으로 이동</button>
+  `;
+  return div;
+}
+
+// 초기 렌더링 실행
+render();
+</script>
+</body>
+</html>
