@@ -1641,24 +1641,24 @@ function buildReason(rec) {
 // ============================================================
 // 상세 진단 가독성: 핵심 수치·문구 자동 강조
 function emph(t) {
-  let s = t;
-  // 어르신 말씀 인용 강조 — 반드시 HTML 삽입 전에 처리 (속성 따옴표 오염 방지)
-  s = s.replace(/"([^"<>]{1,40})"/g, '<b class="hl-quote">"$1"</b>');
-  // 문단 머리 [태그] → 라벨 칩
-  s = s.replace(/^(\S+)\s\[([^\]]+)\]\s*/, '<span class="diag-tag">$1 $2</span> ');
-  // 수치 강조 (이미 강조된 인용 내부는 건드리지 않음)
-  s = s.replace(/(\d+(?:\.\d+)?)(점|세|개|회|끼)(?![^<]*<\/b>)/g, '<b class="hl-num">$1$2</b>');
-  // 주의 문구 (붉은 강조)
-  const warn = ['먼저 챙겨 드리면 좋겠습니다', '집 안 안전 점검', '가장 먼저 도와드릴 부분',
-    '마음이 무거우셨겠어요', '혼자 견디지 않으셔도', '비공개로, 가장 먼저',
-    '방문 돌봄 연계를 서둘러'];
-  // 강점 문구 (초록 강조)
-  const good = ['가장 큰 강점', '정상 범위를 잘 유지', '매우 지혜로운 대비', '가장 큰 자원',
-    '든든한 기반', '매우 든든합니다', '건강을 지키는 가장 큰 힘', '정보 접근과 관계 유지에 큰 자산',
-    '일상의 활력소', '가장 큰 재산', '정서적 기반이 안정적'];
-  warn.forEach(w => { s = s.split(w).join('<b class="hl-warn">' + w + '</b>'); });
-  good.forEach(w => { s = s.split(w).join('<b class="hl-good">' + w + '</b>'); });
-  return s;
+  // HTML 태그 구간은 건드리지 않고, 실제 문장 부분만 강조 (태그 속성 따옴표 오인 방지)
+  const warn = ['가장 먼저 도와드릴', '마음에 걸립니다', '가장 무겁게', '서두르지 않으셔도',
+    '혼자 안고 계시지 않아도', '손을 보태 드릴게요', '큰 용기예요', '혼자 견디지 않으셔도'];
+  const good = ['고생 많으셨', '애 많이 쓰셨', '혼자가 아닙니다', '함께 가겠습니다',
+    '지켜드릴 부분이지', '참 잘해오셨습니다', '정말 잘해오셨습니다', '가장 큰 힘입니다',
+    '돈으로도 못 사는 재산', '큰 복입니다', '가장 큰 재산'];
+  const parts = String(t).split(/(<[^>]*>)/);
+  let first = true;
+  return parts.map(seg => {
+    if (seg.startsWith('<')) return seg;
+    let x = seg;
+    x = x.replace(/"([^"<>]{1,60})"/g, '<b class="hl-quote">"$1"</b>');
+    if (first) { x = x.replace(/^(\S+)\s\[([^\]]+)\]\s*/, '<span class="diag-tag">$1 $2</span> '); first = false; }
+    x = x.replace(/(\d+(?:\.\d+)?)(점|세|개|회|끼|가지|분)/g, '<b class="hl-num">$1$2</b>');
+    warn.forEach(w => { x = x.split(w).join('<b class="hl-warn">' + w + '</b>'); });
+    good.forEach(w => { x = x.split(w).join('<b class="hl-good">' + w + '</b>'); });
+    return x;
+  }).join('');
 }
 
 function generateNarrative(domains, score, signals) {
