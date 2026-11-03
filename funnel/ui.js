@@ -44,6 +44,15 @@
     if (!S.regions) S.regions = await loadJSON(DATA + 'regions/regions.json');
     if (!S.map) S.map = await loadJSON(DATA + 'map.json');
     if (!S.index) S.index = await loadJSON(DATA + 'index.json').catch(() => ({ sgg: {} }));
+    // 중앙부처 복지서비스(복지로) 공식 문구·신청절차·서식 — 전국 공통이라 지역과 별개로 한 번만
+    if (!S.national) S.national = await loadJSON(DATA + 'welfare/national.json').catch(() => ({ items: {} }));
+  }
+  // 서비스에 연결된 중앙부처 제도들 (map.json 의 bokjiroIds)
+  function officialOf(svcId) {
+    const ids = ((S.map && S.map.services[svcId]) || {}).bokjiroIds || [];
+    const items = S.national && S.national.items;
+    if (!items) return [];
+    return ids.map((id) => items[id]).filter(Boolean);
   }
   async function ensureBundle(sgg) {
     if (S.bundleSgg === sgg && S.bundle) return S.bundle;
@@ -225,9 +234,14 @@
   // ============================================================
   // 공통 조각
   // ============================================================
-  function sampleBanner() {
-    return S.bundle && S.bundle.sample
-      ? `<div class="pf-sample">🧪 <b>예시 데이터</b> — 이 지역의 기관·강좌·센터 정보는 화면 확인용 <b>가상 정보</b>예요. 실제 서비스에서는 공공데이터로 바뀌어요.</div>` : '';
+  // 예시 데이터 여부는 파일별로 봅니다 — 기관은 실데이터인데 강좌만 예시일 수 있어요
+  const KIND_NAME = { facilities: '기관', places: '복지관·경로당', courses: '강좌', offices: '행정복지센터', welfare: '지자체 사업' };
+  function isSample(kind) { const d = S.bundle && S.bundle[kind]; return !!(d && d.sample); }
+  function sampleBanner(...kinds) {
+    const ks = (kinds.length ? kinds : Object.keys(KIND_NAME)).filter(isSample);
+    if (!ks.length) return '';
+    const what = ks.map((k) => KIND_NAME[k]).join('·');
+    return `<div class="pf-sample">🧪 <b>예시 데이터</b> — 이 화면의 <b>${what}</b> 정보는 화면 확인용 <b>가상 정보</b>예요. 실제 서비스에서는 공공데이터로 바뀌어요.</div>`;
   }
   function finalNote() {
     return `<div class="pf-final">※ 「신청 가능성」은 말씀해 주신 내용으로 본 안내예요. <b>최종 판단은 담당 기관이 합니다.</b> 퍼슨은 신청을 대신 내지 않고, 기관 순위를 매기지 않아요.</div>`;
@@ -476,6 +490,7 @@
           ${ap.proxy ? row('대리 신청', ap.proxy.allowed ? '보호자 등이 대신 신청할 수 있어요' + (ap.proxy.note ? ' — ' + ap.proxy.note : '') : (ap.proxy.note || '본인이 직접')) : ''}
         </table>
         ${local.length ? `<div class="res-card"><h4>🏘️ ${esc(region().sggName)} 자체 사업</h4>${local.map((w) => `<div class="pf-local"><b>${esc(w.name)}</b><br><small>${esc(w.target)} · ${esc(w.content)} · ${w.period && !w.period.always ? md(w.period.start) + '~' + md(w.period.end) : '상시'}</small></div>`).join('')}</div>` : ''}
+        ${officialBlock(svc.id)}
         ${ap.ref ? `<a class="pf-link" target="_blank" rel="noopener" href="${attr(ap.ref.url)}">🔗 ${esc(ap.ref.label)}</a>` : ''}
         <div class="pf-src">출처: ${esc(S.map.note.split('.')[0])} · ${esc(S.map.version)} 기준</div>
         ${finalNote()}
@@ -489,6 +504,51 @@
           </div>`}
         </div>`
     };
+  }
+  // 복지로가 올려 둔 공식 서식 파일 — 받아 온 주소를 그대로 엽니다
+  function officialForms(svcId) {
+    const fs = officialOf(svcId).flatMap((o) => (o.forms || []).map((f) => Object.assign({ from: o.name }, f))).filter((f) => f.value);
+    if (!fs.length) return '';
+    return `<div class="pf-form official">
+      <b>복지로에 올라온 공식 서식</b>
+      <div class="pf-row wrap">${fs.map((f) => `<a class="pf-btn sm line" target="_blank" rel="noopener" href="${attr(f.value)}" data-act="formdl" data-svc="${attr(svcId)}">📄 ${esc(f.name)}</a>`).join('')}</div>
+      <div class="pf-muted">출처: 복지로 — 중앙부처복지서비스(공공데이터포털 15090532). 서식이 바뀔 수 있으니 받은 날짜를 확인해 주세요.</div>
+    </div>`;
+  }
+
+  // 복지로 공식 안내 — 받아 온 문구를 고치지 않고 그대로 보여 주고, 출처를 함께 적습니다
+  function officialBlock(svcId) {
+    const list = officialOf(svcId);
+    if (!list.length) return '';
+    const txt = (s) => esc(String(s || '').replace(/\r\n?/g, '\n')).replace(/\n/g, '<br>');
+    const ver = (S.national && S.national.version) || '';
+    const card = (o) => {
+      const rows = [['지원 대상', o.target], ['선정 기준', o.criteria], ['지원 내용', o.content]]
+        .filter(([, v]) => v).map(([k, v]) => `<tr><th>${k}</th><td>${txt(v)}</td></tr>`).join('');
+      const steps = (o.steps || []).filter((s) => s.value)
+        .map((s) => `<li>${esc(s.value)}</li>`).join('');
+      const tel = (o.contacts || []).filter((c) => c.value)
+        .map((c) => `<a href="tel:${attr(String(c.value).replace(/[^0-9]/g, ''))}">☎ ${esc(c.name || '문의')} ${esc(c.value)}</a>`).join(' · ');
+      const site = (o.homepages || []).filter((h) => h.value)
+        .map((h) => `<a target="_blank" rel="noopener" href="${attr(/^https?:/.test(h.value) ? h.value : 'https://' + h.value)}">🔗 ${esc(h.name || h.value)}</a>`).join(' · ');
+      const forms = (o.forms || []).filter((f) => f.value)
+        .map((f) => `<a class="pf-btn sm line" target="_blank" rel="noopener" href="${attr(f.value)}">📄 ${esc(f.name)}</a>`).join(' ');
+      const laws = (o.laws || []).map((l) => esc(l.name)).filter(Boolean).join(' · ');
+      return `<div class="pf-official">
+        <div class="pf-official-h"><b>${esc(o.name)}</b>${o.org ? ` <small>${esc(o.org)}</small>` : ''}${o.year ? ` <small>${esc(o.year)}년 기준</small>` : ''}</div>
+        ${o.outline ? `<div class="pf-official-o">${txt(o.outline)}</div>` : ''}
+        ${rows ? `<table class="pf-table sm">${rows}</table>` : ''}
+        ${steps ? `<div class="pf-official-s"><b>신청 절차</b><ol>${steps}</ol></div>` : ''}
+        ${forms ? `<div class="pf-official-f"><b>신청 서식</b><div class="pf-row wrap">${forms}</div></div>` : ''}
+        ${tel || site ? `<div class="pf-official-c">${[tel, site].filter(Boolean).join('<br>')}</div>` : ''}
+        ${laws ? `<div class="pf-muted">근거: ${laws}</div>` : ''}
+      </div>`;
+    };
+    return `<details class="res-card pf-official-wrap">
+      <summary><h4>🏛️ 공식 안내 ${list.length > 1 ? `<small>제도 ${list.length}개</small>` : ''}</h4><span class="pf-official-more">펼쳐 보기</span></summary>
+      ${list.map(card).join('')}
+      <div class="pf-src">출처: 복지로 — 중앙부처복지서비스(공공데이터포털 15090532)${ver ? ` · ${esc(ver)} 받음` : ''}<br>원문을 고치지 않고 그대로 보여 드려요. 최종 판단은 담당 기관이 합니다.</div>
+    </details>`;
   }
   function officeHtml(o) {
     const parts = [`<b>${esc(o.name || o.type)}</b>`];
@@ -583,6 +643,7 @@
               </div>
               ${f.fmt === 'hwp' ? '<div class="pf-muted">HWP 서식은 자동 기입이 안 돼서, 아래 칸별 안내를 보고 적어 주세요.</div>' : ''}
             </div>`).join('') || '<div class="pf-muted">따로 내는 신청서가 없어요. 신청처에 가서 말씀하시면 돼요.</div>'}
+          ${officialForms(p.svc)}
         </div>
         <div class="res-card"><h4>✍️ 칸별 작성 안내</h4>
           <table class="pf-table slim">${fields.map((f) => `<tr><th>${esc(f.label)}</th><td>${f.value ? `<b>${esc(f.value)}</b>` : '<span class="pf-blank">직접 쓰기</span>'}${f.how ? `<br><small>${esc(f.how)}</small>` : ''}</td></tr>`).join('')}</table>
@@ -648,7 +709,7 @@
       title: `${types.join('·')} 기관`,
       html: `
         ${regionChip()}
-        ${sampleBanner()}
+        ${sampleBanner('facilities')}
         ${g !== 'has' ? (ltcEntry && ltcEntry.status === 'submitted'
           ? '<div class="pf-band blue">📨 장기요양 인정신청을 하셨네요. 등급이 나오면 다닐 곳을 미리 비교해 두세요.</div>'
           : `<div class="pf-band amber">이 기관들은 <b>장기요양 등급</b>이 있어야 이용할 수 있어요. <button class="pf-link" data-act="go" data-s="S10" data-svc="ltc_apply">먼저 인정신청 알아보기 →</button></div>`) : ''}
@@ -659,7 +720,7 @@
     };
   }
   function facilityCard(f, svcId) {
-    const sample = S.bundle.sample;
+    const sample = isSample('facilities');
     const entry = { key: 'facility:' + f.id, kind: 'facility', svcId, refId: f.id, name: f.name, tel: f.tel, addr: f.addr, sample };
     return `
       <div class="pf-card">
@@ -674,7 +735,7 @@
   function S21(p) {
     const f = S.bundle && S.bundle.facilities ? S.bundle.facilities.items.find((x) => x.id === p.id) : null;
     if (!f) return { title: '기관 상세', html: '<div class="pf-empty">기관 정보를 찾지 못했어요.</div>' };
-    const sample = S.bundle.sample;
+    const sample = isSample('facilities');
     const o = origin();
     const dist = o ? C.distanceKm(o, f) : null;
     const entry = { key: 'facility:' + f.id, kind: 'facility', svcId: p.svc, refId: f.id, name: f.name, tel: f.tel, addr: f.addr, sample };
@@ -683,7 +744,7 @@
     return {
       title: '기관 상세',
       html: `
-        ${sampleBanner()}
+        ${sampleBanner('facilities')}
         <div class="pf-h1">${esc(f.name)}</div>
         <div class="pf-meta">${f.types.map((t) => `<span class="pf-badge sub">${esc(t)}</span>`).join('')}${dist != null ? `<span class="pf-dist">${dist}km</span>` : ''}</div>
         <div class="res-card"><h4>📊 공식 지표 <small class="pf-src-in">국민건강보험공단 장기요양기관 평가 ${f.eval ? f.eval.year : ''}</small></h4>
@@ -697,8 +758,13 @@
             ${f.capacity != null ? `<tr><th>정원 / 현원</th><td>${f.capacity}명 / ${f.current}명</td></tr>` : f.current != null ? `<tr><th>이용 인원</th><td>${f.current}명</td></tr>` : ''}
             ${f.staff ? `<tr><th>인력</th><td>${Object.entries(f.staff).map(([k, v]) => `${esc(k)} ${v}명`).join(' · ')}</td></tr>` : ''}
             ${f.nonCovered && f.nonCovered.length ? `<tr><th>비급여 항목</th><td>${f.nonCovered.map(esc).join(', ')}</td></tr>` : ''}
-            <tr><th>주소</th><td>${esc(f.addr)}</td></tr>
+            ${f.waiting != null && f.waiting > 0 ? `<tr><th>대기 인원</th><td>${f.waiting}명</td></tr>` : ''}
+            <tr><th>주소</th><td>${esc(f.addr)}${f.post ? ` <small>(${esc(f.post)})</small>` : ''}</td></tr>
             <tr><th>전화</th><td>${esc(f.tel)}${sample ? ' <small>(예시)</small>' : ''}</td></tr>
+            ${f.openDate ? `<tr><th>개설일</th><td>${esc(f.openDate)}</td></tr>` : ''}
+            ${f.etc && f.etc.homepage ? `<tr><th>누리집</th><td><a target="_blank" rel="noopener" href="${attr(/^https?:/.test(f.etc.homepage) ? f.etc.homepage : 'https://' + f.etc.homepage)}">${esc(f.etc.homepage)}</a></td></tr>` : ''}
+            ${f.etc && f.etc.transport ? `<tr><th>오시는 길</th><td>${esc(f.etc.transport)}</td></tr>` : ''}
+            ${f.etc && f.etc.parking ? `<tr><th>주차</th><td>${esc(f.etc.parking)}</td></tr>` : ''}
           </table>
         </div>
         <div class="pf-row">${telLink(f.tel, sample, '전화 걸기', { kind: 'facility', key: entry.key })}${mapLink(f, sample)}<button class="pf-btn sm ghost" data-act="copy" data-v="${attr(f.addr)}">📋 주소 복사</button></div>
@@ -718,13 +784,13 @@
     const r = region();
     const res = C.findLifePrograms(S.profile, svc, S.bundle && S.bundle.places, S.bundle && S.bundle.courses, S.today, origin());
     const tab = S.lifeTab;
-    const sample = S.bundle && S.bundle.sample;
+    const sample = isSample('places') || isSample('courses');
     const openN = res.programs.filter((x) => x.state !== 'closed').length;
     return {
       title: svc.title,
       html: `
         ${regionChip()}
-        ${sampleBanner()}
+        ${sampleBanner('places', 'courses')}
         <div class="pf-h1 sm">${esc(r.sggName)}에서 받을 수 있는 ${esc(svc.title)} — 프로그램 ${res.programs.length}개 · 장소 ${res.places.length}곳</div>
         ${svc.track === 'AB' ? `<div class="pf-band blue" data-act="go" data-s="S10" data-svc="${attr(svc.id)}">🏛️ 공공 프로그램(${esc((apOf(svc.id) || {}).program || '')})도 함께 보기 →</div>` : ''}
         <div class="result-tabs pf-tabs">
@@ -762,12 +828,12 @@
     const c0 = S.bundle && S.bundle.courses ? S.bundle.courses.items.find((x) => x.id === p.id) : null;
     if (!c0) return { title: '프로그램', html: '<div class="pf-empty">강좌 정보를 찾지 못했어요.</div>' };
     const c = Object.assign({}, c0, { state: C.regState(c0, S.today) });
-    const sample = S.bundle.sample;
+    const sample = isSample('courses');
     const entry = { key: 'course:' + c.id, kind: 'course', svcId: p.svc, refId: c.id, name: c.name, tel: c.tel, addr: c.addr, regEnd: c.regEnd, sample };
     return {
       title: '프로그램 상세',
       html: `
-        ${sampleBanner()}
+        ${sampleBanner('courses')}
         <div class="pf-meta">${stateBadge(c.state)}${c.fee === 0 ? '<span class="pf-free">무료</span>' : ''}</div>
         <div class="pf-h1">${esc(c.name)}</div>
         <table class="pf-table">
@@ -1078,7 +1144,7 @@
       steps.push('접수증이나 접수 번호를 받아 두기');
       const bytes = await PDF.bundlePdf({
         title: '신청 준비 묶음', svcName: m.program,
-        notice: S.bundle && S.bundle.sample ? '※ 예시 데이터로 만든 묶음이에요. 제출처 정보는 실제와 다를 수 있어요.' : '',
+        notice: isSample('offices') ? '※ 제출처(행정복지센터) 정보는 아직 예시예요. 실제와 다를 수 있어요.' : '',
         eligText: `${LEVEL_TXT[e.level]} — ${e.reason}`,
         office: off, steps,
         docs: (ap.docs || []).map((d, i) => ({ name: d.name, where: d.where, checked: !!chk[i] })),

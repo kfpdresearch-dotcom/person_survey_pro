@@ -296,10 +296,13 @@
       dist: origin ? distanceKm(origin, f) : null,
       vacancy: f.capacity != null && f.current != null ? Math.max(0, f.capacity - f.current) : null
     }));
-    const key = sortKey === 'distance' && !origin ? 'grade' : (sortKey || (origin ? 'distance' : 'grade'));
+    // 좌표가 아직 없는 기관(지오코딩 전)은 거리순에서 뒤로 보냅니다 — 비교가 NaN 이 되지 않게
+    const hasDist = list.some((f) => f.dist != null);
+    const key = (sortKey === 'distance' && !hasDist) ? 'grade' : (sortKey || (hasDist ? 'distance' : 'grade'));
     const g = (f) => (f.eval && GRADE_ORDER[f.eval.grade] != null ? GRADE_ORDER[f.eval.grade] : 9);
     const sc = (f) => (f.eval ? f.eval.score : 0);
-    if (key === 'distance') list.sort((a, b) => (a.dist - b.dist) || (g(a) - g(b)));
+    const dk = (f) => (f.dist == null ? Infinity : f.dist);
+    if (key === 'distance') list.sort((a, b) => (dk(a) - dk(b)) || (g(a) - g(b)) || a.name.localeCompare(b.name, 'ko'));
     else if (key === 'vacancy') list.sort((a, b) => ((b.vacancy == null ? -1 : b.vacancy) - (a.vacancy == null ? -1 : a.vacancy)) || (g(a) - g(b)));
     else list.sort((a, b) => (g(a) - g(b)) || (sc(b) - sc(a)) || a.name.localeCompare(b.name, 'ko'));
     list.sortKey = key;
