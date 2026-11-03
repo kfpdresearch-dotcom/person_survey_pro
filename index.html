@@ -34,6 +34,7 @@ h1 { font-size: 27px; font-weight: 800; text-align: center; margin: 0 0 10px; le
 }
 .card:active { transform: scale(0.985); }
 .card.primary { border: 2px solid var(--primary); background: var(--primary-light); }
+.card.plan { border: 2px dashed var(--primary); }
 .card-top { display: flex; align-items: center; gap: 11px; margin-bottom: 9px; }
 .card-emoji { font-size: 31px; }
 .card-title { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
@@ -82,6 +83,15 @@ h1 { font-size: 27px; font-weight: 800; text-align: center; margin: 0 0 10px; le
     <div class="card-meta">⏱️ 약 10분 · 29문항</div>
   </a>
 
+  <a class="card plan" id="planCard" href="./index_pro.html#plan" style="display:none;">
+    <div class="card-top">
+      <span class="card-emoji">📋</span>
+      <span class="card-title">우리 어르신 돌봄 계획</span>
+      <span class="arrow">➔</span>
+    </div>
+    <div class="card-desc" id="planDesc">담아 두신 기관·제도와 이번 주 할 일을 이어서 보세요.</div>
+  </a>
+
   <div class="scope">
     <div class="scope-row"><span class="ico">✅</span><span><b>이 점검이 하는 일</b> — 어르신의 하루 생활을 함께 살펴보고, 도움이 될 만한 돌봄·생활 서비스를 찾아 드려요.</span></div>
     <div class="scope-row"><span class="ico">🚫</span><span><b>하지 않는 일</b> — 병이 있는지 없는지는 알 수 없어요. 몸이 불편하시면 반드시 의사 선생님을 만나보셔야 해요.</span></div>
@@ -98,5 +108,18 @@ h1 { font-size: 27px; font-weight: 800; text-align: center; margin: 0 0 10px; le
 
   <p class="note">본 서비스는 의료기기가 아니므로 질병 유무를 판단할 수 없으며,<br>질병 유무 판단을 위해서는 의사의 검진이 필요합니다.</p>
 </div>
+<script>
+// 심화 점검 뒤 만든 「돌봄 계획」이 이 기기에 있으면 바로가기 카드를 보여 준다 (브라우저 저장소만 읽음)
+(function () {
+  try {
+    var cart = JSON.parse(localStorage.getItem('person_funnel_cart') || '[]');
+    if (!cart.length) return;
+    var card = document.getElementById('planCard');
+    card.style.display = 'block';
+    var waiting = cart.filter(function (c) { return c.status === 'saved' || c.status === 'preparing'; }).length;
+    document.getElementById('planDesc').textContent = '담아 두신 ' + cart.length + '가지' + (waiting ? ' 중 아직 시작 전·준비 중인 것이 ' + waiting + '가지 있어요.' : '를 이어서 확인해 보세요.');
+  } catch (e) { /* 저장소를 쓸 수 없는 환경 */ }
+})();
+</script>
 </body>
 </html>
