@@ -1,0 +1,8 @@
+node_modules/
+tests/shots/
+tools/collect/.quota.json
+tools/collect/.progress.json
+tools/collect/.geocache.json
+.DS_Store
+tools/collect/.env
+.env

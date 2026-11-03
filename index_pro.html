@@ -6,6 +6,7 @@
 <title>퍼슨(Person) Pro — 심층 노후 동행 진단</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<link href="funnel/funnel.css" rel="stylesheet"><!-- 돌봄 퍼널(두 트랙) 화면 스타일 -->
 <style>
 /* 따뜻하고 편안한 독자적 챗봇 디자인 시스템 (초기진입버전과 동일 유지) */
 :root {
@@ -2189,8 +2190,19 @@ function renderSvcCard(rec, tier1, domains) {
       ${effectHtml}
       <div class="svc-first">👣 <b>첫 걸음은 이렇게</b> — ${svc.first}</div>
       ${svc.elig ? `<div class="svc-check">📋 ${svc.check}</div>` : ''}
+      ${funnelGoButton(svc)}
     </div>
   `;
+}
+
+// 돌봄 퍼널(두 트랙) 진입 버튼 — track 태그에 따라 공공 신청(B) / 동네 기관·프로그램(A) 화면으로
+function funnelGoButton(svc) {
+  if (typeof PersonFunnel === 'undefined' || !svc.track) return '';
+  const label = svc.track === 'B' ? '🏛️ 신청 방법 · 신청처 보기'
+    : svc.track === 'AB' ? '🧭 받을 곳 · 신청 방법 보기'
+    : svc.sub === 'life' ? '📍 우리 동네 프로그램 · 장소 보기' : '🏡 우리 동네 기관 보기';
+  const side = svc.track === 'A' ? 'private' : 'public';
+  return `<button class="svc-go" onclick="PersonFunnel.openFromResult('${svc.id}', '${side}')">${label} →</button>`;
 }
 
 function renderResult() {
@@ -2261,6 +2273,12 @@ function renderResult() {
         <h4 style="color:var(--primary-dark); border-bottom-color:var(--primary);">📦 어르신 맞춤 서비스 패키지</h4>
         <p style="font-size:15px; color:#435847; line-height:1.7;">어르신께서 들려주신 이야기 <b>${signals.filter(sg=>sg.dom!=='K'&&!sg.id.startsWith('pref_')).length}가지</b>와 바라시는 바를 하나하나 맞춰 보며, 지금 어르신께 가장 잘 맞을 것들만 골랐어요. 한꺼번에 다 하실 필요 없습니다.${concern ? `<br>직접 적어주신 <b>"${esc(concern)}"</b>, 이 한 줄을 첫 상담에서 가장 먼저 꺼내겠습니다.` : ''}</p>
       </div>
+      ${typeof PersonFunnel !== 'undefined' ? `<div class="pf-entry">
+        <div class="pf-entry-t">🧭 어디서 · 어떻게 받을지 찾아 드려요</div>
+        <p>사시는 동네를 고르시면, 아래 서비스를 <b>공공 신청</b>(주민센터·공단 등)과 <b>동네 기관·프로그램</b>으로 나눠 신청처·준비물·연락처까지 모아 드려요. 다 모은 것은 「우리 어르신 돌봄 계획」 한 장이 돼요.</p>
+        <button class="btn-primary" onclick="PersonFunnel.openFromResult()">받을 곳 · 신청 방법 찾기 →</button>
+        ${PersonFunnel.hasSaved() ? `<button class="btn-secondary" onclick="PersonFunnel.openFromResult(); PersonFunnel.openSaved('S30');">📋 내 돌봄 계획 보기</button>` : ''}
+      </div>` : ''}
       ${recs.tier1.length ? `<div class="svc-tier-label">🥇 먼저 시작하시면 좋을 것</div>` : ''}
       ${recs.tier1.map(r => renderSvcCard(r, true, domains)).join('')}
       ${recs.tier2.length ? `<div class="svc-tier-label">🥈 여유가 되실 때 함께 보실 것</div>` : ''}
@@ -2423,5 +2441,12 @@ function renderAdmin() {
 if (typeof location !== 'undefined' && location.hash === '#admin') STATE.screen = 'admin';
 render();
 </script>
+<!-- 돌봄 퍼널(두 트랙: A 민간 기관 찾기 / B 공공서비스 신청 돕기) — 기존 진단·채점·추천 로직은 그대로 두고 덧붙임 -->
+<script src="funnel/meta.js"></script>
+<script src="funnel/core.js"></script>
+<script src="funnel/store.js"></script>
+<script src="funnel/pdf.js"></script>
+<script src="funnel/ui.js"></script>
+<script>if (window.PersonFunnel && STATE.screen === 'result') render();</script>
 </body>
 </html>
