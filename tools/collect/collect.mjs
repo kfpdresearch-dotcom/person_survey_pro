@@ -77,25 +77,94 @@ async function call(kind, url, params) {
   const u = new URL(url);
   u.searchParams.set('serviceKey', KEY);
   Object.entries(params || {}).forEach(([k, v]) => u.searchParams.set(k, v));
-  const res = await fetch(u);
-  const text = await res.text();
-  if (!res.ok) throw new Error(`${kind} HTTP ${res.status}: ${text.slice(0, 200)}`);
-  try { return JSON.parse(text); } catch { return xmlItems(text); }
+  // 포털이 드물게 연결을 끊습니다 — 잠깐 쉬고 세 번까지 다시 부릅니다
+  let text = null, last = null;
+  for (let t = 0; t < 4; t++) {
+    try {
+      const r = await fetch(u);
+      const body = await r.text();
+      if (!r.ok) throw new Error(`HTTP ${r.status}: ${body.slice(0, 200)}`);
+      text = body; break;
+    } catch (e) {
+      last = e;
+      if (t < 3) await new Promise((ok) => setTimeout(ok, 400 * (t + 1) * (t + 1)));
+    }
+  }
+  if (text == null) throw new Error(`${kind}: ${last && last.message} (4번 시도)`);
+  const bad = text.match(/<returnAuthMsg>([^<]*)<\/returnAuthMsg>/) || text.match(/<errMsg>([^<]*)<\/errMsg>/);
+  if (bad) throw new Error(`${kind}: ${bad[1]} — 인증키를 확인해 주세요(Encoding 말고 Decoding 키)`);
+  let out;
+  try { out = JSON.parse(text); } catch { out = xmlParse(text); }
+  return out;
 }
-function xmlItems(xml) {
-  const items = [...xml.matchAll(/<(servList|item)>([\s\S]*?)<\/\1>/g)].map((m) => {
-    const o = {};
-    for (const f of m[2].matchAll(/<([A-Za-z0-9_]+)>([\s\S]*?)<\/\1>/g)) o[f[1]] = f[2].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
-    return o;
-  });
-  const total = +((xml.match(/<totalCount>(\d+)<\/totalCount>/) || [])[1] || items.length);
-  return { items, totalCount: total };
+
+// ── XML 파싱 ─────────────────────────────────────────────
+// 목록 응답(<response><body><items><item>…)과
+// 상세 응답(<wantedDtl> 아래에 신청방법·문의처·서식 목록이 반복되는 구조)을 함께 읽습니다.
+// 복지로 원문은 ①(&#9312;) 같은 기호가 &amp;#9312; 로 두 번 싸여 오기도 해서, &amp; 를 푼 뒤 한 번 더 풉니다
+const numEnt = (s) => s.replace(/&#(\d+);/g, (_, d) => String.fromCharCode(+d))
+  .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+const unesc = (s) => numEnt(numEnt(String(s).replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'"))
+  .replace(/&amp;/g, '&')).trim();
+
+function xmlTree(xml) {
+  const src = String(xml).replace(/<\?[\s\S]*?\?>/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  const re = /<!\[CDATA\[[\s\S]*?\]\]>|<(\/?)([A-Za-z0-9_:.-]+)[^>]*?(\/?)>|[^<]+/g;
+  const root = { name: '#root', children: [], text: '' };
+  const stack = [root];
+  for (const m of src.match(re) || []) {
+    const cur = stack[stack.length - 1];
+    if (m[0] !== '<' || m.startsWith('<![CDATA[')) { cur.text += m; continue; }
+    const close = m[1] === '/' ? true : m.startsWith('</');
+    const name = (m.match(/^<\/?([A-Za-z0-9_:.-]+)/) || [])[1];
+    if (close) { if (stack.length > 1) stack.pop(); continue; }
+    const node = { name, children: [], text: '' };
+    cur.children.push(node);
+    if (!/\/>$/.test(m)) stack.push(node);
+  }
+  return root;
+}
+function nodeToObj(n) {
+  const o = {}, lists = {};
+  for (const c of n.children) {
+    if (c.children.length) (lists[c.name] = lists[c.name] || []).push(nodeToObj(c));
+    else if (o[c.name] === undefined) o[c.name] = unesc(c.text);
+    else (lists[c.name] = lists[c.name] || []).push(unesc(c.text));
+  }
+  return Object.assign(o, lists);
+}
+function xmlParse(xml) {
+  const root = xmlTree(xml);
+  const top = root.children.find((c) => c.children.length) || root;
+  const items = [];
+  (function walk(n) {
+    for (const c of n.children) {
+      if ((c.name === 'item' || c.name === 'servList') && c.children.length) items.push(nodeToObj(c));
+      else walk(c);
+    }
+  })(top);
+  const total = (function find(n) {
+    for (const c of n.children) {
+      if (c.name === 'totalCount') return +unesc(c.text) || 0;
+      const r = find(c); if (r != null) return r;
+    }
+    return null;
+  })(top);
+  return Object.assign(nodeToObj(top), { items, totalCount: total == null ? items.length : total });
 }
 function itemsOf(res) {
   if (Array.isArray(res.items)) return res.items;
   const b = res.response && res.response.body;
   if (b && b.items) return [].concat(b.items.item || b.items);
   return res.servList || [];
+}
+// 상세 응답의 반복 묶음(신청방법·문의처·서식·법령)을 {이름, 값} 목록으로
+function subList(res, tag) {
+  const a = res && res[tag];
+  if (!Array.isArray(a)) return [];
+  return a.map((x) => ({ name: (x.servSeDetailNm || '').trim(), value: (x.servSeDetailLink || '').trim() }))
+          .filter((x) => x.name || x.value);
 }
 
 // ── 지역 매칭: 주소 → 시·군·구 코드 ──────────────────────
@@ -183,59 +252,175 @@ async function collectLtc() {
     grade: r[E.grade] || null, score: r[E.score] ? +r[E.score] : null, year: r[E.year] ? +r[E.year] : null,
     areas: Object.fromEntries(E.areas.filter((a) => r[a] != null && r[a] !== '').map((a) => [a, +r[a]]))
   }]));
-  let page = progress.ltcPage || 1;
-  for (;;) {
-    const res = await call('ltc_search', c.list, Object.assign({ pageNo: page, numOfRows: 100 }, c.listParams));
-    const items = itemsOf(res);
-    if (!items.length) break;
-    for (const it of items) {
-      const f = pick(it, c.fields);
-      const sgg = sggOfAddr(f.addr);
-      if (!inScope(sgg)) continue;
-      const geo = await geocode(f.addr);
-      // --detail 을 주면 입소인원(정원·현원)까지 기관마다 1건씩 더 받습니다
-      let cap = null, cur = null;
-      if (args.detail) {
+  const d = CFG.ltc_detail;
+  const TYPE = d.typeCodes || {};
+  const PFX = d.typePrefixes || {};
+  const UNIT = new Set(d.unitPrefixes || []);
+  const GROUP = Object.entries(d.groups || {});
+  const CAPTYPE = new Set(d.capacityTypes || []);
+  const num = (v) => (v == null || v === '' ? null : +String(v).replace(/[^0-9]/g, '') || 0);
+  // 활용가이드에 없는 코드는 이름을 만들지 않고 코드를 그대로 보여 줍니다
+  const typeName = (code) => TYPE[code] || PFX[code[0]] || code;
+  const groupOf = (code) => (UNIT.has(code[0]) ? '치매전담실' : (GROUP.find(([, v]) => v.includes(code)) || [null])[0]);
+
+  // 조회 범위: 시·군·구 단위로 묻습니다. siGunGuCd 는 법정동 코드의 뒤 3자리입니다.
+  const scope = SGG.filter((g) => inScope(g.code));
+  if (!scope.length) { console.log('  · 범위에 드는 시·군·구가 없어요 (--sido 41 또는 --sgg 41281 처럼 지정해 주세요)'); return; }
+  if (scope.length > 60) console.log(`  ⚠️  시·군·구 ${scope.length}곳 — 기관마다 상세조회를 1~2건 더 부르므로 하루 한도에 걸릴 수 있어요. 시·도 하나씩 권합니다.`);
+
+  for (const g of scope) {
+    if (progress.ltcDone && progress.ltcDone.includes(g.code)) { console.log(`  · ${g.sidoName} ${g.name} 이미 받음 (건너뜀)`); continue; }
+    const base = { siDoCd: g.sido, siGunGuCd: g.code.slice(g.sido.length) };   // 41281 → 281
+    let page = 1, seen = 0, kept = 0;
+    for (;;) {
+      const res = await call('ltc_search', c.list, Object.assign({ pageNo: page, numOfRows: 100 }, base, c.listParams));
+      const items = itemsOf(res);
+      if (!items.length) break;
+      seen += items.length;
+      for (const it of items) {
+        const f = pick(it, c.fields);
+        const code = String(f.type || '').trim();
+        if (code === 'Z01') continue;
+        if (args.ltcTypes && !String(args.ltcTypes).split(',').includes(code)) continue;
+
+        // 주소·전화는 목록에 없습니다 — 일반현황 상세에서 받습니다 (기관마다 1건)
+        let addr = null, tel = null, post = null;
         try {
-          const d = CFG.ltc_detail;
-          const dr = await call('ltc_detail', d.detail, Object.assign({ longTermAdminSym: f.id }, d.detailParams));
-          const di = itemsOf(dr)[0];
-          if (di) {
-            const num = (v) => (v == null || v === '' ? null : +String(v).replace(/[^0-9]/g, '') || 0);
-            cap = num(di[d.fields.capacity]);
-            const ma = num(di[d.fields.maleNow]), fm = num(di[d.fields.femaleNow]);
-            cur = (ma == null && fm == null) ? null : (ma || 0) + (fm || 0);   // 현원 = 남 + 여
+          const gr = await call('ltc_detail', d.general, { longTermAdminSym: f.id, adminPttnCd: code });
+          const gi = itemsOf(gr)[0];
+          if (gi) {
+            const G = d.generalFields;
+            addr = (gi[G.addr] || '').replace(/\s+/g, ' ').trim() || null;
+            const t = [gi[G.tel1], gi[G.tel2], gi[G.tel3]].filter((x) => x && String(x).trim());
+            tel = t.length === 3 ? t.join('-') : null;
+            post = gi[G.post] || null;
           }
         } catch (e) { if (e.quota) throw e; }
+
+        // --detail 을 주면 입소·주야간보호 기관의 정원·현원·대기까지 받습니다 (기관마다 1건 더)
+        let cap = null, cur = null, wait = null;
+        if (args.detail && CAPTYPE.has(code)) {
+          try {
+            const dr = await call('ltc_detail', d.detail, Object.assign({ longTermAdminSym: f.id, adminPttnCd: code }, d.detailParams));
+            const di = itemsOf(dr)[0];
+            if (di) {
+              cap = num(di[d.fields.capacity]);
+              const ma = num(di[d.fields.maleNow]), fm = num(di[d.fields.femaleNow]);
+              cur = (ma == null && fm == null) ? null : (ma || 0) + (fm || 0);     // 현원 = 남 + 여
+              const mw = num(di[d.fields.maleWait]), fw = num(di[d.fields.femaleWait]);
+              wait = (mw == null && fw == null) ? null : (mw || 0) + (fw || 0);    // 대기 = 남 + 여
+            }
+          } catch (e) { if (e.quota) throw e; }
+        }
+
+        // --staff 를 주면 인력현황(시설장·사회복지사·요양보호사 …)을 받습니다. 0명인 직종은 담지 않습니다.
+        let staff = null;
+        if (args.staff && d.staff) {
+          try {
+            const sr = await call('ltc_detail', d.staff, { longTermAdminSym: f.id, adminPttnCd: code });
+            const si = itemsOf(sr)[0];
+            if (si) {
+              const e = Object.entries(d.staffFields || {}).map(([k, v]) => [k, num(si[v])]).filter(([, v]) => v > 0);
+              if (e.length) staff = Object.fromEntries(e);
+            }
+          } catch (e) { if (e.quota) throw e; }
+        }
+
+        // --etc 를 주면 홈페이지·교통편·주차 안내를 받습니다
+        let etc = null;
+        if (args.etc && d.etc) {
+          try {
+            const er = await call('ltc_detail', d.etc, { longTermAdminSym: f.id, adminPttnCd: code });
+            const ei = itemsOf(er)[0];
+            if (ei) {
+              const E = d.etcFields;
+              const o = { homepage: ei[E.homepage] || null, transport: ei[E.transport] || null, parking: ei[E.parking] || null };
+              if (o.homepage || o.transport || o.parking) etc = o;
+            }
+          } catch (e) { if (e.quota) throw e; }
+        }
+
+        const geo = await geocode(addr);
+        put('facilities', g.code, {
+          id: f.id, name: f.name,
+          typeCode: code, types: [typeName(code)], group: groupOf(code),
+          addr, tel, post, openDate: ymd(f.openDate),
+          lat: geo && geo.lat, lng: geo && geo.lng,
+          eval: evalById[f.id] && evalById[f.id].grade ? evalById[f.id] : null,
+          capacity: cap, current: cur, waiting: wait, staff, etc
+        });
+        kept++;
       }
-      put('facilities', sgg, {
-        id: f.id, name: f.name, types: String(f.type || '').split(/[,·/]/).map((s) => s.trim()).filter(Boolean),
-        addr: f.addr, tel: f.tel, lat: geo && geo.lat, lng: geo && geo.lng,
-        eval: evalById[f.id] && evalById[f.id].grade ? evalById[f.id] : null, capacity: cap, current: cur
-      });
+      if (seen >= (res.totalCount || seen)) break;
+      page++;
     }
-    progress.ltcPage = ++page; writeJ(stateFile('.progress.json'), progress);
+    console.log(`  · ${g.sidoName} ${g.name} — 목록 ${seen}건 → 담은 것 ${kept}건`);
+    progress.ltcDone = (progress.ltcDone || []).concat(g.code);
+    writeJ(stateFile('.progress.json'), progress);
   }
-  delete progress.ltcPage; writeJ(stateFile('.progress.json'), progress);
+  delete progress.ltcDone; writeJ(stateFile('.progress.json'), progress);
+}
+
+// 지자체 서비스는 「경기도 고양시」 처럼 구(區) 없이 시 단위로 등록된 것이 많습니다.
+// 그런 서비스는 그 시의 모든 구에 함께 넣습니다 (덕양구 주민도 신청할 수 있는 사업이니까요).
+function sggCodesOfNames(sidoName, sggName) {
+  const sd = REGIONS.sido.find((s) => s.name === (sidoName || '').trim())
+    || REGIONS.sido.find((s) => (sidoName || '').trim().startsWith(s.name.slice(0, 2)));
+  if (!sd) return [];
+  const nm = (sggName || '').replace(/\s+/g, '');
+  if (!nm) return sd.sgg.map((g) => g.code);                                  // 시·도 전체 사업
+  const exact = sd.sgg.filter((g) => g.name.replace(/\s/g, '') === nm);
+  if (exact.length) return exact.map((g) => g.code);
+  const under = sd.sgg.filter((g) => g.name.replace(/\s/g, '').startsWith(nm));  // 「고양시」 → 덕양구·일산동구·일산서구
+  return under.map((g) => g.code);
 }
 
 async function collectWelfareLocal() {
   const c = CFG.welfare_local;
-  let page = progress.localPage || 1;
+  const S = c.subLists || {};
+  // 범위를 주면 목록 요청에서 바로 걸러 받습니다 (ctpvNm = 시·도 이름)
+  const scopeSido = args.sido || (args.sgg ? String(args.sgg).slice(0, 2) : null);
+  const sidoName = scopeSido ? (REGIONS.sido.find((s) => s.code === String(scopeSido)) || {}).name : null;
+  let page = progress.localPage || 1, hits = 0, seen = 0;
   for (;;) {
-    const res = await call('welfare_local', c.list, Object.assign({ pageNo: page, numOfRows: 100 }, c.listParams));
+    const res = await call('welfare_local', c.list, Object.assign(
+      { pageNo: page, numOfRows: 100 }, sidoName ? { ctpvNm: sidoName } : {}, c.listParams));
     const items = itemsOf(res);
     if (!items.length) break;
+    seen += items.length;
     for (const it of items) {
       const f = pick(it, c.fields);
-      const sgg = sggOfAddr(`${f.sido || ''} ${f.sgg || ''}`);
-      if (!inScope(sgg)) continue;
-      put('welfare', sgg, { id: f.id, name: f.name, svc: [], target: f.target, criteria: f.criteria, content: f.content, method: f.method,
-        period: f.start || f.end ? { always: false, start: ymd(f.start), end: ymd(f.end) } : { always: true } });
+      const codes = sggCodesOfNames(f.sido, f.sgg).filter(inScope);
+      if (!codes.length) continue;
+      const sgg = codes[0];
+
+      // 지원대상·선정기준·신청방법·서식은 목록에 없습니다 — 상세조회에서 받습니다
+      let d = {}, forms = [], contacts = [], laws = [];
+      try {
+        const dr = await call('welfare_local', c.detail, Object.assign({ servId: f.id }, c.detailParams));
+        d = pick(itemsOf(dr)[0] || dr, c.detailFields);
+        forms = subList(dr, S.forms); contacts = subList(dr, S.contacts); laws = subList(dr, S.laws);
+      } catch (e) { if (e.quota) throw e; }
+
+      const row = {
+        id: f.id, name: f.name, svc: [], source: 'local',
+        summary: f.summary || null, dept: d.dept || f.dept || null,
+        area: [f.sido, f.sgg].filter(Boolean).join(' ') || null,
+        target: d.target || null, criteria: d.criteria || null, content: d.content || null,
+        method: d.method || f.methodName || null, methodName: f.methodName || null,
+        life: f.life || null, who: f.who || null, cycle: f.cycle || null, how: f.how || null,
+        link: f.link || null, forms, contacts, laws,
+        period: (d.start || d.end) ? { always: false, start: ymd(d.start), end: ymd(d.end) } : { always: true },
+        updated: ymd(f.updated)
+      };
+      codes.forEach((cd) => put('welfare', cd, row));   // 시 단위 사업은 그 시의 모든 구에
+      hits++;
     }
     progress.localPage = ++page; writeJ(stateFile('.progress.json'), progress);
+    if (seen >= (res.totalCount || seen)) break;
   }
   delete progress.localPage; writeJ(stateFile('.progress.json'), progress);
+  console.log(`  · 지자체 복지서비스 — 목록 ${seen}건 → 범위 안 ${hits}건`);
 }
 
 // 중앙부처 — 일 100건: 목록 1회 + 상세는 map.json 에 연결된 서비스(bokjiroIds)만 나눠서 갱신
@@ -245,10 +430,18 @@ async function collectWelfareNational() {
   const ids = [...new Set(Object.values(map.services).flatMap((s) => s.bokjiroIds || []))];
   const nat = readJ(path.join(DATA, 'welfare', 'national.json'), { items: {} });
   const order = ids.sort((a, b) => ((nat.items[a] || {}).fetchedAt || '').localeCompare((nat.items[b] || {}).fetchedAt || ''));  // 오래된 것부터
+  const S = c.subLists || {};
   for (const id of order) {
     const res = await call('welfare_national', c.detail, Object.assign({ servId: id }, c.detailParams));
     const it = itemsOf(res)[0] || res;
-    nat.items[id] = Object.assign(pick(it, c.fields), { fetchedAt: TODAY });
+    nat.items[id] = Object.assign(pick(it, c.detailFields || c.fields), {
+      steps: subList(res, S.steps),         // 신청 → 조사 → 결정 → 지급 → 사후관리
+      contacts: subList(res, S.contacts),   // 문의처 전화
+      homepages: subList(res, S.homepages),
+      forms: subList(res, S.forms),         // 신청서식 내려받기 주소 (복지로)
+      laws: subList(res, S.laws),
+      fetchedAt: TODAY
+    });
     writeJ(path.join(DATA, 'welfare', 'national.json'), Object.assign(nat, { version: TODAY, source: ['중앙부처복지서비스(15090532)'] }));
   }
   console.log(`  ✓ welfare/national.json  ${Object.keys(nat.items).length}건 (map.json 의 bokjiroIds 기준)`);
@@ -279,17 +472,32 @@ async function verifyEndpoints() {
   if (/%[0-9A-Fa-f]{2}/.test(KEY)) console.log('  ⚠️  키에 %2B 같은 문자가 보입니다 — Encoding 키일 수 있어요. Decoding 키를 넣어 주세요.');
   console.log('');
 
+  // 상세조회는 기관기호·기관유형코드·서비스ID 가 필수라, 먼저 목록에서 표본을 하나씩 집어 씁니다.
+  const sampleOf = async (kind, url, params, fn) => {
+    try { const it = itemsOf(await call(kind, url, params))[0]; return it ? fn(it) : null; } catch { return null; }
+  };
+  const sLtc = await sampleOf('ltc_search', CFG.ltc_search.list, { pageNo: 1, numOfRows: 1, siDoCd: '41', siGunGuCd: '281' },
+    (it) => ({ longTermAdminSym: it.longTermAdminSym, adminPttnCd: it.adminPttnCd }));
+  const sNat = await sampleOf('welfare_national', CFG.welfare_national.list, Object.assign({ pageNo: 1, numOfRows: 1 }, CFG.welfare_national.listParams),
+    (it) => Object.assign({ servId: it.servId }, CFG.welfare_national.detailParams));
+  const sLoc = await sampleOf('welfare_local', CFG.welfare_local.list, Object.assign({ pageNo: 1, numOfRows: 1 }, CFG.welfare_local.listParams),
+    (it) => Object.assign({ servId: it.servId }, CFG.welfare_local.detailParams));
+
   const targets = [
-    ['welfare_national', CFG.welfare_national && CFG.welfare_national.list, { pageNo: 1, numOfRows: 1 }],
-    ['welfare_local',    CFG.welfare_local && CFG.welfare_local.list,       { pageNo: 1, numOfRows: 1 }],
-    ['ltc_search',       CFG.ltc_search && CFG.ltc_search.list,             { pageNo: 1, numOfRows: 1 }],
-    ['ltc_detail',       CFG.ltc_detail && CFG.ltc_detail.detail,           { pageNo: 1, numOfRows: 1 }]
+    ['welfare_national', CFG.welfare_national && CFG.welfare_national.list,   { pageNo: 1, numOfRows: 1 }, 'fields', '중앙부처 복지서비스 — 목록'],
+    ['welfare_national', CFG.welfare_national && CFG.welfare_national.detail, sNat, 'detailFields', '중앙부처 복지서비스 — 상세(지원대상·서식)'],
+    ['welfare_local',    CFG.welfare_local && CFG.welfare_local.list,         { pageNo: 1, numOfRows: 1 }, 'fields', '지자체 복지서비스 — 목록'],
+    ['welfare_local',    CFG.welfare_local && CFG.welfare_local.detail,       sLoc, 'detailFields', '지자체 복지서비스 — 상세(지원대상·신청방법)'],
+    ['ltc_search',       CFG.ltc_search && CFG.ltc_search.list,               { pageNo: 1, numOfRows: 1, siDoCd: '41', siGunGuCd: '281' }, 'fields', '장기요양기관 목록 (고양시 덕양구)'],
+    ['ltc_detail',       CFG.ltc_detail && CFG.ltc_detail.general,            sLtc, 'generalFields', '장기요양기관 일반현황 — 주소·전화'],
+    ['ltc_detail',       CFG.ltc_detail && CFG.ltc_detail.detail,             sLtc, 'fields', '장기요양기관 입소인원 — 정원·현원·대기']
   ];
 
   let bad = 0;
-  for (const [kind, url, extra] of targets) {
+  for (const [kind, url, extra, fkey, label] of targets) {
     const cfg = CFG[kind] || {};
-    process.stdout.write(`■ ${kind} (${cfg.id || '-'})\n`);
+    process.stdout.write(`■ ${kind} (${cfg.id || '-'}) · ${label}\n`);
+    if (!extra) { console.log('  · 목록에서 표본 기관을 못 집어 위 단계부터 고쳐야 합니다\n'); bad++; continue; }
     if (!url) {
       console.log('  · 요청주소가 비어 있어요');
       if (cfg.portal) console.log('    ' + cfg.portal + ' 의 "요청주소(End Point)" 를 endpoints.json 의 "' + kind + '" 에 넣어 주세요');
@@ -299,7 +507,9 @@ async function verifyEndpoints() {
     console.log('  요청주소 ' + url);
     try {
       const res = await call(kind, url, Object.assign({}, cfg.listParams || cfg.detailParams || {}, extra));
-      const items = itemsOf(res);
+      // 상세 응답은 <item> 없이 평평하게 옵니다 — 그 경우 응답 자체를 한 건으로 봅니다
+      const flat = Object.keys(res).filter((k) => !['items', 'totalCount'].includes(k));
+      const items = itemsOf(res).length ? itemsOf(res) : (flat.length > 2 ? [res] : []);
       if (!items.length) {
         console.log('  △ 호출은 됐지만 결과가 0건입니다 — 파라미터(' + JSON.stringify(cfg.listParams || cfg.detailParams || {}) + ')를 확인해 주세요\n');
         bad++; continue;
@@ -307,8 +517,11 @@ async function verifyEndpoints() {
       const keys = Object.keys(items[0]);
       console.log('  ✓ 응답 ' + items.length + '건 · 필드 ' + keys.length + '개');
       console.log('    필드: ' + keys.join(', '));
-      const mapped = Object.entries(cfg.fields || {});
-      const miss = mapped.filter(([, v]) => !keys.includes(v));
+      const opt = new Set(cfg.optional || []);
+      const mapped = Object.entries(cfg[fkey] || {});
+      const miss = mapped.filter(([k, v]) => !keys.includes(v) && !opt.has(k));
+      const skipped = mapped.filter(([k, v]) => !keys.includes(v) && opt.has(k));
+      if (skipped.length) console.log('    · 이 기관에 값이 없는 선택 항목: ' + skipped.map(([k]) => k).join(', '));
       if (miss.length) {
         bad++;
         console.log('    ✗ endpoints.json 과 안 맞는 항목 ' + miss.length + '개:');

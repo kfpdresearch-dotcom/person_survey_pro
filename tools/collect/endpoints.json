@@ -18,15 +18,41 @@
     "fields": {
       "id": "servId",
       "name": "servNm",
+      "summary": "servDgst",
+      "org": "jurMnofNm",
+      "dept": "jurOrgNm",
+      "life": "lifeArray",
+      "theme": "intrsThemaArray",
+      "who": "trgterIndvdlArray",
+      "cycle": "sprtCycNm",
+      "how": "srvPvsnNm",
+      "online": "onapPsbltYn",
+      "tel": "rprsCtadr",
+      "link": "servDtlLink"
+    },
+    "detailFields": {
+      "id": "servId",
+      "name": "servNm",
+      "org": "jurMnofNm",
+      "outline": "wlfareInfoOutlCn",
       "target": "tgtrDtlCn",
       "criteria": "slctCritCn",
       "content": "alwServCn",
-      "method": "aplyMtdCn",
-      "contact": "inqplCtadrList",
-      "org": "jurMnofNm"
+      "year": "crtrYr",
+      "tel": "rprsCtadr",
+      "cycle": "sprtCycNm",
+      "how": "srvPvsnNm"
+    },
+    "subLists": {
+      "steps": "applmetList",
+      "contacts": "inqplCtadrList",
+      "homepages": "inqplHmpgReldList",
+      "forms": "basfrmList",
+      "laws": "baslawList"
     },
     "portal": "https://www.data.go.kr/data/15090532/openapi.do",
-    "_확인": "2026-11-03 요청주소 존재 확인(응답코드 30 = 키 미등록). 응답 필드명은 --verify 로 최종 확인하세요."
+    "_확인": "2026-11-03 실제 호출로 확인. 목록은 요약 필드만, 지원대상·선정기준·급여내용·서식은 detailed 오퍼레이션에서 옵니다.",
+    "_주의": "목록은 callTp=L, 상세는 callTp=D 와 servId 가 필요합니다. 상세 응답의 루트 태그는 <wantedDtl> 이고 신청절차·문의처·서식·법령이 반복 묶음으로 들어옵니다. basfrmList 의 servSeDetailLink 가 복지로 서식 파일 내려받기 주소입니다."
   },
   "welfare_local": {
     "id": "15108347",
@@ -43,15 +69,39 @@
       "name": "servNm",
       "sido": "ctpvNm",
       "sgg": "sggNm",
+      "summary": "servDgst",
+      "dept": "bizChrDeptNm",
+      "methodName": "aplyMtdNm",
+      "life": "lifeNmArray",
+      "who": "trgterIndvdlNmArray",
+      "cycle": "sprtCycNm",
+      "how": "srvPvsnNm",
+      "link": "servDtlLink",
+      "updated": "lastModYmd"
+    },
+    "detailFields": {
+      "id": "servId",
+      "name": "servNm",
+      "sido": "ctpvNm",
+      "sgg": "sggNm",
+      "dept": "bizChrDeptNm",
+      "summary": "servDgst",
       "target": "sprtTrgtCn",
       "criteria": "slctCritCn",
       "content": "alwServCn",
       "method": "aplyMtdCn",
+      "methodName": "aplyMtdNm",
       "start": "enfcBgngYmd",
       "end": "enfcEndYmd"
     },
+    "subLists": {
+      "contacts": "inqplCtadrList",
+      "forms": "basfrmList",
+      "laws": "baslawList"
+    },
     "portal": "https://www.data.go.kr/data/15108347/openapi.do",
-    "_확인": "2026-11-03 요청주소 존재 확인(응답코드 30 = 키 미등록). 응답 필드명은 --verify 로 최종 확인하세요."
+    "_확인": "2026-11-03 실제 호출로 확인. 목록은 요약 필드만, 지원대상·선정기준·신청방법·시행기간은 detailed 오퍼레이션에서 옵니다.",
+    "_주의": "목록 응답의 ctpvNm·sggNm 으로 시·군·구를 가립니다(주소 문자열이 아니라 시·도명/시·군·구명)."
   },
   "ltc_search": {
     "id": "15059029",
@@ -63,29 +113,113 @@
       "id": "longTermAdminSym",
       "name": "adminNm",
       "type": "adminPttnCd",
-      "addr": "addr",
-      "tel": "telNo",
       "sido": "siDoCd",
-      "sgg": "siGunGuCd"
+      "sgg": "siGunGuCd",
+      "openDate": "longTermPeribRgtDt"
     },
     "portal": "https://www.data.go.kr/data/15059029/openapi.do",
     "base": "https://apis.data.go.kr/B550928/searchLtcInsttService02",
-    "_확인": "2026-11-03 요청주소 확인(오퍼레이션 존재 응답코드 30). 응답 필드명은 --verify 로 최종 확인하세요."
+    "_확인": "2026-11-03 실제 호출로 확인(resultCode 00).",
+    "_주의": [
+      "목록 응답에는 주소·전화가 없습니다. 주소(adminAddr)·전화(locTelNo_1~3)는 ltc_detail 의 general(일반현황) 오퍼레이션에서 받습니다.",
+      "siGunGuCd 는 법정동 시·군·구 코드의 뒤 3자리입니다. 고양시 덕양구 41281 → siDoCd=41 & siGunGuCd=281 (41281 을 그대로 넣으면 0건).",
+      "siDoCd 만 주면 시·도 전체가 나옵니다(경기 11,138건 / 고양시 덕양구 426건)."
+    ]
   },
   "ltc_detail": {
     "id": "15058856",
     "verify": false,
     "detail": "https://apis.data.go.kr/B550928/getLtcInsttDetailInfoService02/getAceptncNmprDetailInfoItem02",
+    "general": "https://apis.data.go.kr/B550928/getLtcInsttDetailInfoService02/getGeneralSttusDetailInfoItem02",
+    "etc": "https://apis.data.go.kr/B550928/getLtcInsttDetailInfoService02/getInsttEtcDetailInfoItem02",
     "detailParams": {},
+    "dailyLimit": 10000,
     "fields": {
       "id": "longTermAdminSym",
       "capacity": "totPer",
       "maleNow": "maNowPer",
-      "femaleNow": "fmNowPer"
+      "femaleNow": "fmNowPer",
+      "maleWait": "maRsvPer",
+      "femaleWait": "fmRsvPer"
     },
+    "optional": ["maleWait", "femaleWait", "homepage", "transport", "parking"],
+    "generalFields": {
+      "addr": "adminAddr",
+      "post": "hmPostNo",
+      "tel1": "locTelNo_1",
+      "tel2": "locTelNo_2",
+      "tel3": "locTelNo_3"
+    },
+    "etcFields": {
+      "homepage": "hmpgAddr",
+      "transport": "tfMth",
+      "parking": "pkngEquip"
+    },
+    "staff": "https://apis.data.go.kr/B550928/getLtcInsttDetailInfoService02/getStaffSttusDetailInfoItem02",
+    "staffFields": {
+      "시설장": "equipLong",
+      "사무국장": "hdOfce",
+      "사회복지사": "socWel",
+      "의사(전임)": "chrgDoc",
+      "의사(촉탁)": "chargeDoc",
+      "간호사": "nur",
+      "간호조무사": "nurArticle",
+      "치위생사": "dent",
+      "물리치료사": "physicalMTret",
+      "작업치료사": "wrkMTret",
+      "요양보호사(1급)": "recuProt_1",
+      "요양보호사(2급)": "recuProt_2",
+      "요양보호사(유예)": "recuProtDelay",
+      "사무원": "ofceEmp",
+      "영양사": "nut",
+      "조리원": "cook",
+      "위생원": "hygiPrsn",
+      "관리인": "mgmtPrsn",
+      "보조원": "suppPrsn",
+      "기타": "etcPer"
+    },
+    "_인력주의": "활용가이드에는 recuProt1·recuProt2 로 적혀 있지만 실제 응답은 recuProt_1·recuProt_2 입니다. 0명인 직종은 저장하지 않습니다.",
     "portal": "https://www.data.go.kr/data/15058856/openapi.do",
     "base": "https://apis.data.go.kr/B550928/getLtcInsttDetailInfoService02",
-    "_확인": "2026-11-03 공식 활용가이드(장기요양기관 시설정보)에서 확인. 입소인원 상세 = 정원·현원·대기인원",
+    "_확인": "2026-11-03 실제 호출로 확인. totPer=정원, maNowPer/fmNowPer=현원(남/여), maRsvPer/fmRsvPer=대기(남/여).",
+    "_주의": "모든 Item 계열 오퍼레이션은 longTermAdminSym 과 함께 adminPttnCd(기관유형코드) 가 필수입니다. 빼면 resultCode 00 에 빈 body 가 옵니다.",
+    "typeCodes": {
+      "A01": "노인요양시설",
+      "A02": "노인전문요양시설",
+      "A03": "노인요양시설",
+      "A04": "노인요양공동생활가정",
+      "A05": "노인요양시설(단기보호 전환)",
+      "B01": "방문요양",
+      "B02": "방문목욕",
+      "B03": "주야간보호",
+      "B04": "단기보호",
+      "B05": "방문간호",
+      "C01": "방문요양",
+      "C02": "방문목욕",
+      "C03": "주야간보호",
+      "C04": "단기보호",
+      "C05": "방문간호",
+      "C06": "복지용구",
+      "S41": "치매전담형 노인요양공동생활가정",
+      "Z01": "기타"
+    },
+    "_유형코드설명": "G31~G99 치매전담실 가형 / M31~M99 치매전담실 나형 / H31~H99·I31~I99 주야간보호 내 치매전담실 — 기관 안의 '실' 단위라 목록에서는 접어 둡니다. 활용가이드에 없는 코드(B06 등)는 이름을 만들어 붙이지 않고 코드 그대로 둡니다.",
+    "typePrefixes": {
+      "G": "치매전담실(가형)",
+      "M": "치매전담실(나형)",
+      "H": "주야간보호 내 치매전담실",
+      "I": "주야간보호 내 치매전담실"
+    },
+    "unitPrefixes": ["G", "M", "H", "I"],
+    "groups": {
+      "입소": ["A01", "A02", "A03", "A05"],
+      "공동생활가정": ["A04", "S41"],
+      "주야간보호": ["B03", "C03"],
+      "단기보호": ["B04", "C04"],
+      "방문": ["B01", "B02", "B05", "C01", "C02", "C05"],
+      "복지용구": ["C06"]
+    },
+    "capacityTypes": ["A01", "A02", "A03", "A04", "A05", "B03", "B04", "C03", "C04", "S41"],
     "operations": {
       "일반현황": "https://apis.data.go.kr/B550928/getLtcInsttDetailInfoService02/getGeneralSttusDetailInfoItem02",
       "인력현황": "https://apis.data.go.kr/B550928/getLtcInsttDetailInfoService02/getStaffSttusDetailInfoItem02",

@@ -4,7 +4,10 @@
  "services": {
   "visit_talk": {
    "program": "노인맞춤돌봄서비스",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00003191",
+    "WLF00006237"
+   ],
    "apply": {
     "ref": {
      "url": "https://www.bokjiro.go.kr",
@@ -66,7 +69,9 @@
   },
   "walk_companion": {
    "program": "노인맞춤돌봄서비스",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00003191"
+   ],
    "apply": {
     "ref": {
      "url": "https://www.bokjiro.go.kr",
@@ -128,7 +133,9 @@
   },
   "life_companion": {
    "program": "노인맞춤돌봄서비스",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00003191"
+   ],
    "apply": {
     "ref": {
      "url": "https://www.bokjiro.go.kr",
@@ -190,7 +197,9 @@
   },
   "psy_counsel": {
    "program": "정신건강복지센터 마음건강 상담",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00005567"
+   ],
    "apply": {
     "call": {
      "tel": "1577-0199",
@@ -329,7 +338,9 @@
   },
   "oral_swallow": {
    "program": "보건소 구강보건 상담",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00001169"
+   ],
    "apply": {
     "docs": [],
     "office": {
@@ -451,7 +462,9 @@
   },
   "visit_nurse": {
    "program": "보건소 방문건강관리",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00003248"
+   ],
    "ltcType": [
     "방문간호"
    ],
@@ -496,7 +509,9 @@
   },
   "rehab": {
    "program": "보건소 지역사회중심재활",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00001179"
+   ],
    "apply": {
     "docs": [],
     "office": {
@@ -533,7 +548,9 @@
   },
   "home_safety": {
    "program": "주거급여 수선유지 · 지자체 주거환경개선",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00001093"
+   ],
    "apply": {
     "ref": {
      "url": "https://www.bokjiro.go.kr",
@@ -597,7 +614,12 @@
   },
   "energy_support": {
    "program": "에너지바우처",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00000072",
+    "WLF00004639",
+    "WLF00004638",
+    "WLF00006265"
+   ],
    "apply": {
     "direct": {
      "url": "https://www.bokjiro.go.kr",
@@ -665,7 +687,10 @@
   },
   "safety_check": {
    "program": "응급안전안심서비스",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00001093",
+    "WLF00006237"
+   ],
    "apply": {
     "forms": [
      {
@@ -758,7 +783,10 @@
   },
   "senior_job": {
    "program": "노인일자리 및 사회활동 지원사업",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00001155",
+    "WLF00004660"
+   ],
    "apply": {
     "direct": {
      "url": "https://www.seniorro.or.kr",
@@ -864,7 +892,10 @@
   },
   "finance_consult": {
    "program": "서민금융·금융복지 상담",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00000031",
+    "WLF00003241"
+   ],
    "apply": {
     "ref": {
      "url": "https://www.kinfa.or.kr",
@@ -900,7 +931,9 @@
   },
   "legal_acp": {
    "program": "무료 법률상담 · 사전연명의료의향서",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00006295"
+   ],
    "apply": {
     "ref": {
      "url": "https://www.klac.or.kr",
@@ -942,7 +975,9 @@
   },
   "elder_protect": {
    "program": "노인보호전문기관 비공개 상담",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00003252"
+   ],
    "apply": {
     "call": {
      "tel": "1577-1389",
@@ -1029,7 +1064,9 @@
   },
   "cognitive_program": {
    "program": "치매안심센터 프로그램",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00005004"
+   ],
    "apply": {
     "call": {
      "tel": "1899-9988",
@@ -1075,7 +1112,12 @@
   },
   "ltc_apply": {
    "program": "노인장기요양보험 인정신청",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00003248",
+    "WLF00003194",
+    "WLF00001086",
+    "WLF00000103"
+   ],
    "apply": {
     "direct": {
      "url": "https://www.longtermcare.or.kr",
@@ -1159,7 +1201,9 @@
   },
   "ltc_copay_reduce": {
    "program": "장기요양 본인부담 경감",
-   "bokjiroIds": [],
+   "bokjiroIds": [
+    "WLF00001177"
+   ],
    "apply": {
     "call": {
      "tel": "1577-1000",
@@ -1215,5 +1259,6 @@
    "ltc_copay_reduce",
    "visit_nurse"
   ]
- }
+ },
+ "bokjiroIdsNote": "bokjiroIds 는 2026-11-03 중앙부처복지서비스(15090532) 노년 목록 130건에서 제도 이름으로 대조한 값입니다. 제도 성격이 겹치는 항목(방문 말벗·생활지원·외출동행 → 노인맞춤돌봄서비스 등)은 같은 제도를 가리키고, 중앙부처에 해당 제도가 없는 서비스(식사배달·영양·수면·복약·병원동행·복지상담·통합돌봄)는 빈 배열로 두었습니다 — 지자체·보건소 사업이라서요. 담당자 확인이 필요합니다."
 }

@@ -202,3 +202,34 @@ body.pf-lock { overflow: hidden; }
   #pf-print .pf-week { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 .pf-sticky > .pf-btn { width: 100%; padding: 15px; font-size: 16px; }
+
+/* ── 복지로 공식 안내 (중앙부처복지서비스 API 원문) ───────────── */
+.pf-official-wrap { padding: 0; }
+.pf-official-wrap > summary { display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 14px 16px; cursor: pointer; list-style: none; }
+.pf-official-wrap > summary::-webkit-details-marker { display: none; }
+.pf-official-wrap > summary h4 { margin: 0; }
+.pf-official-more { font-size: 13.5px; color: var(--primary-dark); white-space: nowrap; }
+.pf-official-more::after { content: ' ▾'; }
+.pf-official-wrap[open] .pf-official-more::after { content: ' ▴'; }
+.pf-official-wrap[open] .pf-official-more { font-size: 0; }
+.pf-official-wrap[open] .pf-official-more::after { font-size: 13.5px; }
+.pf-official { border-top: 1px solid var(--line); padding: 14px 16px; }
+.pf-official-h { font-size: 16px; margin-bottom: 6px; }
+.pf-official-h small { font-weight: 500; color: var(--text-sub); font-size: 12.5px; margin-left: 4px; }
+.pf-official-o { font-size: 14.5px; line-height: 1.7; color: var(--text-sub); margin-bottom: 10px; }
+.pf-official .pf-table.sm { display: block; }
+.pf-official .pf-table.sm tbody, .pf-official .pf-table.sm tr { display: block; }
+.pf-official .pf-table.sm th { display: block; width: auto; padding: 10px 0 2px; border: none;
+  font-size: 13.5px; color: var(--primary-dark); background: none; }
+.pf-official .pf-table.sm td { display: block; width: auto; padding: 0 0 8px; border: none;
+  font-size: 14.5px; line-height: 1.75; }
+.pf-official .pf-table.sm tr + tr th { border-top: 1px solid var(--line); margin-top: 4px; }
+.pf-official-s { font-size: 14.5px; margin-top: 10px; }
+.pf-official-s ol { margin: 6px 0 0 18px; }
+.pf-official-s li { line-height: 1.7; margin-bottom: 3px; }
+.pf-official-f { margin-top: 12px; font-size: 14.5px; }
+.pf-official-c { margin-top: 10px; font-size: 14.5px; line-height: 1.8; }
+.pf-official-wrap .pf-src { padding: 12px 16px; border-top: 1px solid var(--line); }
+.pf-row.wrap { flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.pf-form.official { border-top: 1px dashed var(--line); margin-top: 12px; padding-top: 12px; }
